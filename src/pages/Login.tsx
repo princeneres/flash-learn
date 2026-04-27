@@ -202,7 +202,7 @@ const Login: React.FC = () => {
                 <p>
                     © {currentYear} Flash Learn. Built by{" "}
                     <a
-                        href="https://github.com/prince-neres"
+                        href="https://github.com/princeneres"
                         target="_blank"
                         rel="noreferrer"
                         className="font-medium text-primary underline-offset-4 hover:underline"

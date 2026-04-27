@@ -631,7 +631,7 @@ const Landing: React.FC = () => {
                         © {currentYear} Flash Learn ·{" "}
                         {t("landing.footerRights")} ·{" "}
                         <a
-                            href="https://github.com/prince-neres"
+                            href="https://github.com/princeneres"
                             target="_blank"
                             rel="noreferrer"
                             className="font-medium text-primary underline-offset-4 hover:underline"
