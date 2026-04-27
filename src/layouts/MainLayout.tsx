@@ -37,7 +37,7 @@ const MainLayout: React.FC = () => {
                     <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
                         <div className="flex items-center gap-6">
                             <Link
-                                to="/"
+                                to="/dashboard"
                                 className="text-xl font-semibold tracking-tight"
                             >
                                 <img
@@ -48,7 +48,7 @@ const MainLayout: React.FC = () => {
                             </Link>
                             <div className="hidden items-center gap-3 text-sm font-medium text-muted-foreground md:flex">
                                 <Link
-                                    to="/"
+                                    to="/dashboard"
                                     className="rounded-full px-3 py-1.5 text-foreground transition hover:bg-accent hover:text-accent-foreground"
                                 >
                                     {t("dashboard.title")}

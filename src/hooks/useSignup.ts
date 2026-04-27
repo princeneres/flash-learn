@@ -44,7 +44,7 @@ export const useSignup = () => {
             });
 
             toast({ title: t("auth.accountCreated") });
-            navigate("/");
+            navigate("/dashboard");
         } catch (error: any) {
             console.error(error);
             toast({

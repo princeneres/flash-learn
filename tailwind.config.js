@@ -58,10 +58,56 @@ export default {
           "0%": { opacity: 1, transform: "scale(1)" },
           "100%": { opacity: 0, transform: "scale(0.95)" },
         },
+        "fade-up": {
+          "0%": { opacity: 0, transform: "translateY(24px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+        "fade-in": {
+          "0%": { opacity: 0 },
+          "100%": { opacity: 1 },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-14px)" },
+        },
+        "float-slow": {
+          "0%, 100%": { transform: "translate(0px, 0px) scale(1)" },
+          "33%": { transform: "translate(30px, -30px) scale(1.05)" },
+          "66%": { transform: "translate(-20px, 20px) scale(0.95)" },
+        },
+        "gradient-x": {
+          "0%, 100%": { "background-position": "0% 50%" },
+          "50%": { "background-position": "100% 50%" },
+        },
+        shimmer: {
+          "0%": { "background-position": "-200% 0" },
+          "100%": { "background-position": "200% 0" },
+        },
+        "spin-slow": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        "pulse-ring": {
+          "0%": { transform: "scale(1)", opacity: 0.6 },
+          "100%": { transform: "scale(1.6)", opacity: 0 },
+        },
       },
       animation: {
         enter: "enter 150ms ease-out",
         exit: "exit 150ms ease-in",
+        "fade-up": "fade-up 700ms ease-out both",
+        "fade-in": "fade-in 600ms ease-out both",
+        float: "float 6s ease-in-out infinite",
+        "float-slow": "float-slow 14s ease-in-out infinite",
+        "gradient-x": "gradient-x 8s ease infinite",
+        shimmer: "shimmer 2.5s linear infinite",
+        "spin-slow": "spin-slow 20s linear infinite",
+        marquee: "marquee 30s linear infinite",
+        "pulse-ring": "pulse-ring 2s cubic-bezier(0.4,0,0.6,1) infinite",
       },
     },
   },

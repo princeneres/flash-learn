@@ -16,7 +16,7 @@ export const useLogin = () => {
         try {
             await signInWithEmailAndPassword(auth, email, password);
             toast({ title: t("auth.welcomeBack") });
-            navigate("/");
+            navigate("/dashboard");
         } catch (error: any) {
             console.error(error);
             toast({

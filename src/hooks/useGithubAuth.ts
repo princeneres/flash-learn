@@ -45,7 +45,7 @@ export const useGithubAuth = () => {
       }
 
       toast({ title: t("auth.welcomeBack") });
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       console.error(error);
       const description = error instanceof Error ? error.message : undefined;

@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import MainLayout from "./layouts/MainLayout";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -24,16 +25,22 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({
     return currentUser ? <>{children}</> : <Navigate to="/login" />;
 };
 
+const RootRoute: React.FC = () => {
+    const { currentUser } = useAuth();
+    return currentUser ? <Navigate to="/dashboard" replace /> : <Landing />;
+};
+
 function App() {
     return (
         <AuthProvider>
             <Router>
                 <Routes>
+                    <Route path="/" element={<RootRoute />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
-                    <Route path="/" element={<MainLayout />}>
+                    <Route element={<MainLayout />}>
                         <Route
-                            index
+                            path="/dashboard"
                             element={
                                 <PrivateRoute>
                                     <Dashboard />
@@ -41,7 +48,7 @@ function App() {
                             }
                         />
                         <Route
-                            path="deck/:deckId"
+                            path="/deck/:deckId"
                             element={
                                 <PrivateRoute>
                                     <DeckDetail />
@@ -49,7 +56,7 @@ function App() {
                             }
                         />
                         <Route
-                            path="study/:deckId"
+                            path="/study/:deckId"
                             element={
                                 <PrivateRoute>
                                     <StudySession />
@@ -57,7 +64,7 @@ function App() {
                             }
                         />
                         <Route
-                            path="leaderboard"
+                            path="/leaderboard"
                             element={
                                 <PrivateRoute>
                                     <Leaderboard />
@@ -65,7 +72,7 @@ function App() {
                             }
                         />
                         <Route
-                            path="public"
+                            path="/public"
                             element={
                                 <PrivateRoute>
                                     <PublicDecks />
@@ -73,14 +80,13 @@ function App() {
                             }
                         />
                         <Route
-                            path="profile"
+                            path="/profile"
                             element={
                                 <PrivateRoute>
                                     <Profile />
                                 </PrivateRoute>
                             }
                         />
-                        {/* Add more routes here */}
                     </Route>
                 </Routes>
             </Router>

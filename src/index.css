@@ -87,6 +87,46 @@
 }
 
 @layer utilities {
+    .text-gradient-primary {
+        background: linear-gradient(110deg, #3b82f6 0%, #8b5cf6 40%, #ec4899 80%);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+
+    .bg-mesh {
+        background-image:
+            radial-gradient(at 20% 20%, rgba(59, 130, 246, 0.25) 0px, transparent 50%),
+            radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.22) 0px, transparent 50%),
+            radial-gradient(at 0% 80%, rgba(236, 72, 153, 0.18) 0px, transparent 50%),
+            radial-gradient(at 80% 80%, rgba(56, 189, 248, 0.20) 0px, transparent 50%);
+    }
+
+    .grid-pattern {
+        background-image:
+            linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 70%);
+        -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 70%);
+    }
+
+    .shimmer-text {
+        background: linear-gradient(
+            90deg,
+            hsl(var(--foreground)) 0%,
+            hsl(var(--primary)) 50%,
+            hsl(var(--foreground)) 100%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+    }
+
     .perspective-1000 {
         perspective: 1000px;
     }
