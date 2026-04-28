@@ -14,6 +14,18 @@ import { db } from '../lib/firebase';
 import { toast } from '../components/ui/use-toast';
 import i18n from '../i18n';
 
+const todayKey = (d: Date = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const dayDiff = (a: string, b: string) => {
+  const ms = new Date(b).getTime() - new Date(a).getTime();
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+};
+
 export const GamificationService = {
   awardPoints: async (userId: string, points: number) => {
     const userRef = doc(db, 'users', userId);
@@ -21,6 +33,34 @@ export const GamificationService = {
       points: increment(points),
       'stats.totalReviews': increment(1),
     });
+  },
+
+  updateStreak: async (userId: string) => {
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) return { streak: 0, changed: false };
+
+    const data = snap.data();
+    const today = todayKey();
+    const last: string | null = data.stats?.lastStudyDate ?? null;
+    const prev: number = data.stats?.streak ?? 0;
+
+    if (last === today) {
+      return { streak: prev, changed: false };
+    }
+
+    let next: number;
+    if (last && dayDiff(last, today) === 1) {
+      next = prev + 1;
+    } else {
+      next = 1;
+    }
+
+    await updateDoc(userRef, {
+      'stats.streak': next,
+      'stats.lastStudyDate': today,
+    });
+    return { streak: next, changed: true };
   },
 
   checkAchievements: async (userId: string) => {

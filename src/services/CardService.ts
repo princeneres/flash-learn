@@ -112,6 +112,7 @@ export const CardService = {
     // Award points (10 points for correct, 1 for incorrect)
     const points = quality >= 3 ? 10 : 1;
     await GamificationService.awardPoints(card.ownerId, points);
+    await GamificationService.updateStreak(card.ownerId);
     await GamificationService.checkAchievements(card.ownerId);
     
     return result;
