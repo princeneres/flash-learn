@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🧠 Flash Learn
+<img src="public/logo.png" alt="Flash Learn logo" width="140" />
+
+# Flash Learn
 
 **An open-source, Anki-inspired flashcard app with spaced repetition, rich-content cards, and community decks.**
 
