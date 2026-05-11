@@ -161,4 +161,28 @@
     .glow-ring:hover::before {
         opacity: 1;
     }
+
+    .rich-link {
+        color: hsl(var(--primary));
+        background-color: hsl(var(--primary) / 0.08);
+        padding: 0 0.25rem;
+        border-radius: 0.25rem;
+        text-decoration: underline;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 2px;
+        font-weight: 500;
+        word-break: break-word;
+    }
+
+    .rich-link::after {
+        content: "↗";
+        display: inline-block;
+        margin-left: 0.15rem;
+        font-size: 0.85em;
+        opacity: 0.8;
+    }
+
+    .rich-link:hover {
+        background-color: hsl(var(--primary) / 0.18);
+    }
 }

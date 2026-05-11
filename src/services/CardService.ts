@@ -19,6 +19,8 @@ export interface Card {
   ownerId: string;
   front: string;
   back: string;
+  frontAudio?: string;
+  backAudio?: string;
   nextReview: any; // Timestamp
   interval: number;
   easeFactor: number;
@@ -32,7 +34,7 @@ const COLLECTION_NAME = 'cards';
 export const CardService = {
   createCard: async (ownerId: string, deckId: string, card: Partial<Card>) => {
     const batch = writeBatch(db);
-    
+
     // Create card
     const cardRef = doc(collection(db, COLLECTION_NAME));
     batch.set(cardRef, {
@@ -53,6 +55,55 @@ export const CardService = {
 
     await batch.commit();
     return cardRef.id;
+  },
+
+  bulkCreateCards: async (
+    ownerId: string,
+    deckId: string,
+    cards: Array<{
+      front: string;
+      back: string;
+      frontAudio?: string;
+      backAudio?: string;
+    }>
+  ) => {
+    if (cards.length === 0) return 0;
+
+    // Firestore batch limit: 500 ops. Reserve 1 for deck increment per chunk.
+    const CHUNK = 499;
+    let inserted = 0;
+
+    for (let i = 0; i < cards.length; i += CHUNK) {
+      const slice = cards.slice(i, i + CHUNK);
+      const batch = writeBatch(db);
+
+      slice.forEach((c) => {
+        const cardRef = doc(collection(db, COLLECTION_NAME));
+        const payload: Record<string, unknown> = {
+          front: c.front,
+          back: c.back,
+          deckId,
+          ownerId,
+          nextReview: serverTimestamp(),
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          status: 'new',
+          createdAt: serverTimestamp(),
+        };
+        if (c.frontAudio) payload.frontAudio = c.frontAudio;
+        if (c.backAudio) payload.backAudio = c.backAudio;
+        batch.set(cardRef, payload);
+      });
+
+      const deckRef = doc(db, 'decks', deckId);
+      batch.update(deckRef, { cardCount: increment(slice.length) });
+
+      await batch.commit();
+      inserted += slice.length;
+    }
+
+    return inserted;
   },
 
   getDeckCards: async (deckId: string) => {

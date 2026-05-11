@@ -8,6 +8,8 @@ import { ArrowLeft, CheckCircle, Trophy, RotateCcw, Brain, ThumbsUp, Zap, Sparkl
 import { clsx } from "clsx";
 import { LoadingState } from "../components/LoadingState";
 import { useToast } from "../components/ui/use-toast";
+import { PlayAudioButton } from "../components/PlayAudioButton";
+import { RichContent } from "../components/RichContent";
 
 const StudySession: React.FC = () => {
   const { deckId } = useParams<{ deckId: string }>();
@@ -159,7 +161,15 @@ const StudySession: React.FC = () => {
                 "absolute inset-0 flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-border/60 bg-card px-8 text-center shadow-xl backface-hidden",
                 isFlipped && "opacity-0"
               )}>
-                <p className="text-xl sm:text-2xl font-semibold leading-relaxed">{currentCard.front}</p>
+                <RichContent
+                  html={currentCard.front}
+                  className="text-xl sm:text-2xl font-semibold leading-relaxed prose prose-lg dark:prose-invert max-w-none"
+                />
+                {currentCard.frontAudio && (
+                  <div className="mt-4">
+                    <PlayAudioButton audioRef={currentCard.frontAudio} />
+                  </div>
+                )}
                 <span className="mt-10 inline-flex items-center gap-2 rounded-full bg-muted/50 px-4 py-1.5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
                   {t('study.showAnswer')}
                 </span>
@@ -172,9 +182,15 @@ const StudySession: React.FC = () => {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-primary">
                   {t('study.answerLabel')}
                 </span>
-                <p className="mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed">
-                  {currentCard.back}
-                </p>
+                <RichContent
+                  html={currentCard.back}
+                  className="mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed prose prose-lg dark:prose-invert max-w-none"
+                />
+                {currentCard.backAudio && (
+                  <div className="mt-4">
+                    <PlayAudioButton audioRef={currentCard.backAudio} />
+                  </div>
+                )}
               </div>
             </div>
           </div>
