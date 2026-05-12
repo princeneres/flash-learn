@@ -162,12 +162,17 @@ const StudySession: React.FC = () => {
                 isFlipped && "opacity-0"
               )}>
                 <RichContent
+                  key={`front-${currentCard.id}`}
                   html={currentCard.front}
-                  className="text-xl sm:text-2xl font-semibold leading-relaxed prose prose-lg dark:prose-invert max-w-none"
+                  className="rich-text text-xl sm:text-2xl font-semibold leading-relaxed"
+                  autoplayFirst={!isFlipped}
                 />
                 {currentCard.frontAudio && (
                   <div className="mt-4">
-                    <PlayAudioButton audioRef={currentCard.frontAudio} />
+                    <PlayAudioButton
+                      audioRef={currentCard.frontAudio}
+                      autoplay={!isFlipped}
+                    />
                   </div>
                 )}
                 <span className="mt-10 inline-flex items-center gap-2 rounded-full bg-muted/50 px-4 py-1.5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
@@ -183,12 +188,17 @@ const StudySession: React.FC = () => {
                   {t('study.answerLabel')}
                 </span>
                 <RichContent
+                  key={`back-${currentCard.id}`}
                   html={currentCard.back}
-                  className="mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed prose prose-lg dark:prose-invert max-w-none"
+                  className="rich-text mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed"
+                  autoplayFirst={isFlipped}
                 />
                 {currentCard.backAudio && (
                   <div className="mt-4">
-                    <PlayAudioButton audioRef={currentCard.backAudio} />
+                    <PlayAudioButton
+                      audioRef={currentCard.backAudio}
+                      autoplay={isFlipped}
+                    />
                   </div>
                 )}
               </div>
