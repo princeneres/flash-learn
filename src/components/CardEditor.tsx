@@ -1,9 +1,17 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEditor, EditorContent, Node, mergeAttributes } from '@tiptap/react';
+import {
+  useEditor,
+  EditorContent,
+  Node,
+  mergeAttributes,
+  ReactNodeViewRenderer,
+  type Editor,
+} from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
+import { ImageNodeView, AudioNodeView } from './MediaNodeView';
 import {
   Bold,
   Italic,
@@ -22,19 +30,11 @@ import {
 import { MediaStorageService } from '../services/MediaStorageService';
 import { Button } from './ui/button';
 import { sanitizeRichHtml } from '../lib/sanitize';
+import { downscaleImage, extensionFromType } from '../lib/image';
+import { parseMediaSrc } from '../lib/media';
 
 const randomRef = (ext: string): string =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}${ext}`;
-
-const extFromMime = (type: string, fallback: string): string => {
-  const m = type.match(/\/(\w+)/);
-  if (!m) return fallback;
-  const sub = m[1].toLowerCase();
-  if (sub === 'jpeg') return '.jpg';
-  if (sub === 'svg+xml') return '.svg';
-  if (sub === 'mpeg') return '.mp3';
-  return `.${sub}`;
-};
 
 const AudioNode = Node.create({
   name: 'audio',
@@ -53,6 +53,9 @@ const AudioNode = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ['audio', mergeAttributes(HTMLAttributes, { controls: 'controls' })];
   },
+  addNodeView() {
+    return ReactNodeViewRenderer(AudioNodeView);
+  },
 });
 
 const MediaImage = Image.extend({
@@ -63,7 +66,30 @@ const MediaImage = Image.extend({
       allowBase64: false,
     };
   },
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageNodeView);
+  },
 });
+
+const removeExistingMediaNodes = (editor: Editor, typeName: 'image' | 'audio'): string[] => {
+  const positions: number[] = [];
+  const refs: string[] = [];
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === typeName) {
+      positions.push(pos);
+      const ref = parseMediaSrc(node.attrs.src as string | null | undefined);
+      if (ref) refs.push(ref);
+    }
+  });
+  if (positions.length === 0) return refs;
+  let tr = editor.state.tr;
+  for (const pos of [...positions].reverse()) {
+    const node = tr.doc.nodeAt(pos);
+    if (node) tr = tr.delete(pos, pos + node.nodeSize);
+  }
+  editor.view.dispatch(tr);
+  return refs;
+};
 
 interface Props {
   value: string;
@@ -76,6 +102,19 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
   const { t } = useTranslation();
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
+  const insertImageRef = useRef<(file: File) => Promise<void>>(async () => {});
+  const insertAudioRef = useRef<(file: File) => Promise<void>>(async () => {});
+
+  const handleFiles = useCallback((files: FileList | File[] | null | undefined): boolean => {
+    const list = files ? Array.from(files) : [];
+    if (list.length === 0) return false;
+    const img = list.find((f) => f.type.startsWith('image/'));
+    const aud = list.find((f) => f.type.startsWith('audio/'));
+    if (!img && !aud) return false;
+    if (img) void insertImageRef.current(img);
+    if (aud) void insertAudioRef.current(aud);
+    return true;
+  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -95,7 +134,18 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
     editorProps: {
       attributes: {
         class:
-          'prose prose-sm dark:prose-invert max-w-none min-h-[120px] focus:outline-none px-3 py-2',
+          'rich-text min-h-[120px] focus:outline-none px-3 py-2',
+      },
+      handlePaste: (_view, event) => {
+        const handled = handleFiles(event.clipboardData?.files);
+        if (handled) event.preventDefault();
+        return handled;
+      },
+      handleDrop: (_view, event) => {
+        const dt = (event as DragEvent).dataTransfer;
+        const handled = handleFiles(dt?.files);
+        if (handled) event.preventDefault();
+        return handled;
       },
     },
     onUpdate: ({ editor }) => {
@@ -115,8 +165,16 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
   const insertImage = useCallback(
     async (file: File) => {
       if (!editor) return;
-      const ref = randomRef(extFromMime(file.type, '.png'));
-      await MediaStorageService.put('image', ref, file);
+      const processed = await downscaleImage(file);
+      const mime = processed.type || file.type || 'image/jpeg';
+      const ref = randomRef(extensionFromType(mime, '.png'));
+      await MediaStorageService.put('image', ref, processed);
+      const oldRefs = removeExistingMediaNodes(editor, 'image');
+      if (oldRefs.length > 0) {
+        void MediaStorageService.deleteMany(
+          oldRefs.map((r) => ({ kind: 'image' as const, ref: r }))
+        );
+      }
       editor.chain().focus().setImage({ src: `media://${ref}`, alt: file.name }).run();
     },
     [editor]
@@ -125,8 +183,14 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
   const insertAudio = useCallback(
     async (file: File) => {
       if (!editor) return;
-      const ref = randomRef(extFromMime(file.type, '.mp3'));
+      const ref = randomRef(extensionFromType(file.type, '.mp3'));
       await MediaStorageService.put('audio', ref, file);
+      const oldRefs = removeExistingMediaNodes(editor, 'audio');
+      if (oldRefs.length > 0) {
+        void MediaStorageService.deleteMany(
+          oldRefs.map((r) => ({ kind: 'audio' as const, ref: r }))
+        );
+      }
       editor
         .chain()
         .focus()
@@ -138,6 +202,11 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
     },
     [editor]
   );
+
+  useEffect(() => {
+    insertImageRef.current = insertImage;
+    insertAudioRef.current = insertAudio;
+  }, [insertImage, insertAudio]);
 
   const promptLink = useCallback(() => {
     if (!editor) return;
@@ -317,7 +386,9 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
         }}
       />
 
-      <EditorContent editor={editor} placeholder={placeholder} />
+      <div className="max-h-[40vh] overflow-y-auto">
+        <EditorContent editor={editor} placeholder={placeholder} />
+      </div>
     </div>
   );
 };

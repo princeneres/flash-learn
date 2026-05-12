@@ -4,11 +4,13 @@ import { clsx } from 'clsx';
 import { MediaStorageService } from '../services/MediaStorageService';
 
 interface Props {
-  /** Filename ref stored on the card (resolved against IndexedDB). */
+  /** Filename ref stored on the card. */
   audioRef: string;
   className?: string;
   size?: 'sm' | 'md';
   ariaLabel?: string;
+  /** When true, plays automatically as soon as the URL resolves. */
+  autoplay?: boolean;
 }
 
 export const PlayAudioButton: React.FC<Props> = ({
@@ -16,6 +18,7 @@ export const PlayAudioButton: React.FC<Props> = ({
   className,
   size = 'md',
   ariaLabel = 'Play audio',
+  autoplay,
 }) => {
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -43,24 +46,38 @@ export const PlayAudioButton: React.FC<Props> = ({
     };
   }, [audioRef]);
 
-  const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!url) return;
+  const ensureAudioEl = (src: string): HTMLAudioElement => {
     if (!audioElRef.current) {
-      const audio = new Audio(url);
+      const audio = new Audio(src);
       audio.addEventListener('ended', () => setPlaying(false));
       audio.addEventListener('pause', () => setPlaying(false));
       audio.addEventListener('play', () => setPlaying(true));
       audio.addEventListener('error', () => setPlaying(false));
       audioElRef.current = audio;
     }
+    return audioElRef.current;
+  };
+
+  useEffect(() => {
+    if (!autoplay || !url) return;
+    const audio = ensureAudioEl(url);
+    audio.currentTime = 0;
+    void audio.play().catch(() => setPlaying(false));
+    // intentional: re-run on url + autoplay changes only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoplay, url]);
+
+  const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!url) return;
+    const audio = ensureAudioEl(url);
     if (playing) {
-      audioElRef.current.pause();
-      audioElRef.current.currentTime = 0;
+      audio.pause();
+      audio.currentTime = 0;
     } else {
-      audioElRef.current.currentTime = 0;
-      void audioElRef.current.play().catch(() => setPlaying(false));
+      audio.currentTime = 0;
+      void audio.play().catch(() => setPlaying(false));
     }
   };
 

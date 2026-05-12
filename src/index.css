@@ -162,6 +162,119 @@
         opacity: 1;
     }
 
+    .rich-text h1,
+    .ProseMirror h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1.25;
+        margin: 0.6em 0 0.3em;
+    }
+
+    .rich-text h2,
+    .ProseMirror h2 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        line-height: 1.3;
+        margin: 0.55em 0 0.25em;
+    }
+
+    .rich-text h3,
+    .ProseMirror h3 {
+        font-size: 1.18rem;
+        font-weight: 600;
+        line-height: 1.35;
+        margin: 0.5em 0 0.2em;
+    }
+
+    .rich-text p,
+    .ProseMirror p {
+        margin: 0.35em 0;
+    }
+
+    .rich-text ul,
+    .ProseMirror ul {
+        list-style: disc;
+        padding-left: 1.5rem;
+        margin: 0.4em 0;
+    }
+
+    .rich-text ol,
+    .ProseMirror ol {
+        list-style: decimal;
+        padding-left: 1.5rem;
+        margin: 0.4em 0;
+    }
+
+    .rich-text li,
+    .ProseMirror li {
+        margin: 0.15em 0;
+    }
+
+    .rich-text li > p,
+    .ProseMirror li > p {
+        margin: 0;
+    }
+
+    .rich-text blockquote,
+    .ProseMirror blockquote {
+        border-left: 3px solid hsl(var(--border));
+        padding-left: 0.9rem;
+        margin: 0.5em 0;
+        color: hsl(var(--muted-foreground));
+        font-style: italic;
+    }
+
+    .rich-text code,
+    .ProseMirror code {
+        background: hsl(var(--muted) / 0.35);
+        padding: 0.1em 0.35em;
+        border-radius: 0.3rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.92em;
+    }
+
+    .rich-text pre,
+    .ProseMirror pre {
+        background: hsl(var(--muted) / 0.5);
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        margin: 0.5em 0;
+        font-size: 0.9em;
+        line-height: 1.5;
+    }
+
+    .rich-text pre code,
+    .ProseMirror pre code {
+        background: none;
+        padding: 0;
+        font-size: inherit;
+    }
+
+    .rich-text strong,
+    .ProseMirror strong {
+        font-weight: 700;
+    }
+
+    .rich-text em,
+    .ProseMirror em {
+        font-style: italic;
+    }
+
+    .rich-text hr,
+    .ProseMirror hr {
+        border: 0;
+        border-top: 1px solid hsl(var(--border));
+        margin: 1em 0;
+    }
+
+    .rich-text img,
+    .ProseMirror img {
+        max-width: 100%;
+        max-height: 18rem;
+        border-radius: 0.5rem;
+    }
+
     .rich-link {
         color: hsl(var(--primary));
         background-color: hsl(var(--primary) / 0.08);
