@@ -48,10 +48,10 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/__/, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.origin === 'https://firestore.googleapis.com',
+            urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'firestore-cache',
+              cacheName: 'supabase-api',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] },
@@ -73,6 +73,17 @@ export default defineConfig({
             options: {
               cacheName: 'image-cache',
               expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: ({ url }) =>
+              url.hostname.endsWith('.supabase.co') &&
+              url.pathname.startsWith('/storage/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'supabase-storage',
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
             },
           },
         ],

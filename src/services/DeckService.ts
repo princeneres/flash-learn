@@ -1,17 +1,7 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  serverTimestamp,
-  getDoc
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
+import { MediaStorageService } from './MediaStorageService';
+import { collectCardMediaRefs } from '../lib/media';
+import { fromDbDeck, toDbDeck } from './_mappers';
 
 export interface Deck {
   id: string;
@@ -22,59 +12,85 @@ export interface Deck {
   tags: string[];
   isPublic: boolean;
   cardCount: number;
-  createdAt: any;
+  createdAt: string;
 }
 
-const COLLECTION_NAME = 'decks';
+const TABLE = 'decks';
 
 export const DeckService = {
-  createDeck: async (ownerId: string, deck: Partial<Deck>) => {
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-      ...deck,
-      ownerId,
-      cardCount: 0,
-      isPublic: deck.isPublic ?? false,
-      createdAt: serverTimestamp(),
-    });
-    return docRef.id;
+  createDeck: async (ownerId: string, deck: Partial<Deck>): Promise<string> => {
+    const payload = toDbDeck({ ...deck, ownerId });
+    const { data, error } = await supabase
+      .from(TABLE)
+      .insert(payload)
+      .select('id')
+      .single();
+    if (error) throw error;
+    return data.id as string;
   },
 
-  getUserDecks: async (ownerId: string) => {
-    const q = query(
-      collection(db, COLLECTION_NAME), 
-      where('ownerId', '==', ownerId),
-      orderBy('createdAt', 'desc')
+  getUserDecks: async (ownerId: string): Promise<Deck[]> => {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(fromDbDeck);
+  },
+
+  getDeck: async (deckId: string): Promise<Deck | null> => {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('id', deckId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? fromDbDeck(data) : null;
+  },
+
+  updateDeck: async (deckId: string, patch: Partial<Deck>): Promise<void> => {
+    const payload: Record<string, unknown> = {};
+    if (patch.title !== undefined) payload.title = patch.title;
+    if (patch.category !== undefined) payload.category = patch.category;
+    if (patch.tags !== undefined) payload.tags = patch.tags;
+    if (patch.isPublic !== undefined) payload.is_public = patch.isPublic;
+    if (patch.ownerName !== undefined) payload.owner_name = patch.ownerName;
+    const { error } = await supabase.from(TABLE).update(payload).eq('id', deckId);
+    if (error) throw error;
+  },
+
+  deleteDeck: async (deckId: string): Promise<void> => {
+    const { data: cardRows } = await supabase
+      .from('cards')
+      .select('front, back, front_audio, back_audio')
+      .eq('deck_id', deckId);
+    const refs = (cardRows ?? []).flatMap((row) =>
+      collectCardMediaRefs({
+        front: row.front,
+        back: row.back,
+        frontAudio: row.front_audio,
+        backAudio: row.back_audio,
+      })
     );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deck));
-  },
-
-  getDeck: async (deckId: string) => {
-    const docRef = doc(db, COLLECTION_NAME, deckId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as Deck;
+    if (refs.length > 0) {
+      try {
+        await MediaStorageService.deleteMany(refs);
+      } catch (err) {
+        console.error('Failed to delete deck media', err);
+      }
     }
-    return null;
+    const { error } = await supabase.from(TABLE).delete().eq('id', deckId);
+    if (error) throw error;
   },
 
-  updateDeck: async (deckId: string, data: Partial<Deck>) => {
-    const docRef = doc(db, COLLECTION_NAME, deckId);
-    await updateDoc(docRef, data);
+  getPublicDecks: async (): Promise<Deck[]> => {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(fromDbDeck);
   },
-
-  deleteDeck: async (deckId: string) => {
-    const docRef = doc(db, COLLECTION_NAME, deckId);
-    await deleteDoc(docRef);
-  },
-
-  getPublicDecks: async () => {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('isPublic', '==', true),
-      orderBy('createdAt', 'desc')
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Deck));
-  }
 };

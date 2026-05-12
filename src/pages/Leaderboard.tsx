@@ -47,7 +47,7 @@ const Leaderboard: React.FC = () => {
               key={user.id}
               className={clsx(
                 "flex items-center gap-4 p-4 transition hover:bg-muted/30",
-                user.id === currentUser?.uid && "border-l-4 border-primary bg-primary/5"
+                user.id === currentUser?.id && "border-l-4 border-primary bg-primary/5"
               )}
             >
               <div className="w-12 text-center text-xl font-bold text-muted-foreground">

@@ -2,7 +2,7 @@ import React from "react";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
-import { auth } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -23,7 +23,7 @@ const MainLayout: React.FC = () => {
 
     const handleLogout = async () => {
         try {
-            await auth.signOut();
+            await supabase.auth.signOut();
             navigate("/login");
         } catch (error) {
             console.error("Failed to log out", error);
@@ -79,7 +79,10 @@ const MainLayout: React.FC = () => {
                                         >
                                             <UserIcon className="h-4 w-4" />
                                             <span className="hidden text-sm font-medium md:inline">
-                                                {currentUser.displayName ||
+                                                {(currentUser.user_metadata
+                                                    ?.full_name as
+                                                    | string
+                                                    | undefined) ||
                                                     currentUser.email}
                                             </span>
                                         </Button>

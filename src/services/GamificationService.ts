@@ -1,16 +1,4 @@
-import { 
-  doc, 
-  updateDoc, 
-  increment, 
-  getDoc, 
-  setDoc, 
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
-  getDocs 
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { toast } from '../components/ui/use-toast';
 import i18n from '../i18n';
 
@@ -26,86 +14,118 @@ const dayDiff = (a: string, b: string) => {
   return Math.round(ms / (1000 * 60 * 60 * 24));
 };
 
+export interface LeaderboardEntry {
+  id: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+  points: number;
+  stats: { totalReviews: number; streak: number };
+}
+
 export const GamificationService = {
   awardPoints: async (userId: string, points: number) => {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      points: increment(points),
-      'stats.totalReviews': increment(1),
-    });
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('points, total_reviews')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error || !data) return;
+    await supabase
+      .from('profiles')
+      .update({
+        points: data.points + points,
+        total_reviews: data.total_reviews + 1,
+      })
+      .eq('id', userId);
   },
 
   updateStreak: async (userId: string) => {
-    const userRef = doc(db, 'users', userId);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) return { streak: 0, changed: false };
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('streak, last_study_date')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error || !data) return { streak: 0, changed: false };
 
-    const data = snap.data();
     const today = todayKey();
-    const last: string | null = data.stats?.lastStudyDate ?? null;
-    const prev: number = data.stats?.streak ?? 0;
+    const last: string | null = data.last_study_date;
+    const prev: number = data.streak ?? 0;
 
     if (last === today) {
       return { streak: prev, changed: false };
     }
 
-    let next: number;
-    if (last && dayDiff(last, today) === 1) {
-      next = prev + 1;
-    } else {
-      next = 1;
-    }
+    const next = last && dayDiff(last, today) === 1 ? prev + 1 : 1;
 
-    await updateDoc(userRef, {
-      'stats.streak': next,
-      'stats.lastStudyDate': today,
-    });
+    await supabase
+      .from('profiles')
+      .update({ streak: next, last_study_date: today })
+      .eq('id', userId);
     return { streak: next, changed: true };
   },
 
   checkAchievements: async (userId: string) => {
-    // This would check conditions and unlock achievements
-    // For simplicity, we'll just log it or do a simple check
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      const reviews = data.stats?.totalReviews || 0;
-
-      if (reviews === 10) {
-        await GamificationService.unlockAchievement(userId, 'first_10_reviews', 'Rookie Reviewer');
-      }
-      if (reviews === 100) {
-        await GamificationService.unlockAchievement(userId, '100_reviews', 'Centurion');
-      }
+    const { data } = await supabase
+      .from('profiles')
+      .select('total_reviews')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!data) return;
+    const reviews = data.total_reviews ?? 0;
+    if (reviews === 10) {
+      await GamificationService.unlockAchievement(
+        userId,
+        'first_10_reviews',
+        'Rookie Reviewer'
+      );
+    }
+    if (reviews === 100) {
+      await GamificationService.unlockAchievement(
+        userId,
+        '100_reviews',
+        'Centurion'
+      );
     }
   },
 
-  unlockAchievement: async (userId: string, achievementId: string, title: string) => {
-    const achievementRef = doc(db, 'users', userId, 'achievements', achievementId);
-    const snap = await getDoc(achievementRef);
-    
-    if (!snap.exists()) {
-      await setDoc(achievementRef, {
-        id: achievementId,
-        title,
-        unlockedAt: new Date().toISOString(),
-      });
-      toast({ title: i18n.t('gamification.achievement', { title }) });
+  unlockAchievement: async (
+    userId: string,
+    key: string,
+    title: string
+  ): Promise<void> => {
+    const { data: existing } = await supabase
+      .from('achievements')
+      .select('id')
+      .eq('owner_id', userId)
+      .eq('key', key)
+      .maybeSingle();
+    if (existing) return;
+    const { error } = await supabase
+      .from('achievements')
+      .insert({ owner_id: userId, key });
+    if (error) {
+      // Unique violation = already unlocked; ignore.
+      if (error.code !== '23505') console.error(error);
+      return;
     }
+    toast({ title: i18n.t('gamification.achievement', { title }) });
   },
 
-  getLeaderboard: async () => {
-    const q = query(
-      collection(db, 'users'),
-      orderBy('points', 'desc'),
-      limit(50)
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ 
-      id: doc.id, 
-      ...doc.data() 
+  getLeaderboard: async (): Promise<LeaderboardEntry[]> => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, email, photo_url, points, total_reviews, streak')
+      .order('points', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      displayName: r.display_name,
+      email: r.email,
+      photoURL: r.photo_url,
+      points: r.points,
+      stats: { totalReviews: r.total_reviews, streak: r.streak },
     }));
-  }
+  },
 };

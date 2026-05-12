@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../components/ui/use-toast";
 
@@ -14,7 +13,11 @@ export const useLogin = () => {
     const login = async (email: string, password: string) => {
         setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) throw error;
             toast({ title: t("auth.welcomeBack") });
             navigate("/dashboard");
         } catch (error: any) {
