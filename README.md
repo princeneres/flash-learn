@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-[![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Supabase](https://img.shields.io/badge/Supabase-2-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
@@ -46,7 +46,7 @@ The project is fully open source and built with a TypeScript-first, accessibilit
 | **Routing** | React Router 7 |
 | **Styling** | Tailwind CSS, Radix UI primitives, shadcn-style components |
 | **Editor** | TipTap 3 (StarterKit, Image, Link extensions) |
-| **Backend** | Firebase (Auth + Firestore + Storage) |
+| **Backend** | Supabase (Auth + Postgres with RLS + Storage) |
 | **Media** | IndexedDB, File System Access API, JSZip |
 | **Anki parsing** | sql.js (SQLite in WASM) + fzstd (Zstandard) |
 | **i18n** | i18next + react-i18next |
@@ -59,7 +59,7 @@ The project is fully open source and built with a TypeScript-first, accessibilit
 
 - [Node.js](https://nodejs.org) 20+
 - [pnpm](https://pnpm.io) 10+
-- A [Firebase](https://console.firebase.google.com) project with **Auth**, **Firestore**, and **Storage** enabled
+- A free [Supabase](https://supabase.com) account (no credit card needed)
 
 ### Installation
 
@@ -71,16 +71,20 @@ pnpm install
 
 ### Configuration
 
-Create a `.env` file at the repo root using the Firebase web config from your project settings:
+1. Create a new project at <https://supabase.com>.
+2. In **Project Settings → API**, copy the **Project URL** and **anon public key** into a new `.env` at the repo root:
 
-```env
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project
-VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-```
+   ```env
+   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
+
+3. In **SQL Editor**, paste and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql). This creates the `profiles`, `decks`, `cards`, and `achievements` tables, triggers, and Row Level Security policies.
+4. In **Storage**, create a new **private** bucket called `media`. The RLS policy on `storage.objects` from the migration already restricts access to each user's own folder.
+5. In **Authentication → Providers**, enable **Google** and **GitHub** (paste OAuth client credentials from each provider). Email/password is enabled by default.
+6. In **Authentication → URL Configuration**, set:
+   - **Site URL**: `http://localhost:5173`
+   - **Redirect URLs**: `http://localhost:5173/**` (add your production URL too when deploying).
 
 ### Running locally
 
@@ -91,42 +95,15 @@ pnpm preview      # serve the production build
 pnpm lint         # run ESLint
 ```
 
-## 🔥 Firebase setup notes
+## 🛡️ Security model
 
-Minimum Firestore security rules to scope data per-user (adjust to your needs):
+All access is gated by **Postgres Row Level Security** (see `supabase/migrations/0001_init.sql`):
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-    match /decks/{deckId} {
-      allow read: if resource.data.isPublic == true
-        || (request.auth != null && resource.data.ownerId == request.auth.uid);
-      allow write: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-    }
-    match /cards/{cardId} {
-      allow read, write: if request.auth != null
-        && resource.data.ownerId == request.auth.uid;
-    }
-  }
-}
-```
+- `profiles`, `cards`, `achievements`: each row is readable/writable only by its owner.
+- `decks`: owner can read/write; rows marked `is_public = true` are readable by anyone authenticated.
+- `storage.objects` (bucket `media`): scoped to `${uid}/...` paths via a single policy.
 
-Storage rules for per-user media:
-
-```
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /users/{uid}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
+Storage URLs are **signed** with a 7-day TTL and cached in IndexedDB on the client to avoid extra round-trips.
 
 ## 🗂️ Project Structure
 
@@ -144,9 +121,10 @@ src/
     ├── DeckExportService.ts        # Export decks to .fldeck.zip
     ├── GamificationService.ts      # Points, streaks, achievements
     ├── LocalDirectoryService.ts    # File System Access API wrapper
-    ├── MediaStorageService.ts      # Unified media backend (IDB + folder + cloud)
+    ├── MediaStorageService.ts      # Supabase Storage wrapper + signed URL cache
     ├── MediaSyncService.ts         # Legacy audio bundle import/export
-    ├── UserSettingsService.ts      # Per-user settings (language, mediaBackend)
+    ├── UserSettingsService.ts      # Per-user settings cache
+    ├── _mappers.ts                 # snake_case ↔ camelCase converters
     └── srsAlgorithm.ts             # SM-2 spaced repetition
 ```
 
