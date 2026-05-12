@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Plus, Book, Trash2, Edit2, PlayCircle, Upload, Download } from "lucide-react";
 import { DeckService, type Deck } from "../services/DeckService";
-import { CardService } from "../services/CardService";
+import { CardService, DECK_CARD_LIMIT } from "../services/CardService";
 import type { ParsedCard } from "../services/AnkiImportService";
+import type { NativeImport } from "../services/DeckImportService";
+import { collectCardMediaRefs } from "../lib/media";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -31,6 +33,7 @@ const Dashboard: React.FC = () => {
   const [importDeckName, setImportDeckName] = useState('');
   const [importParsed, setImportParsed] = useState<ParsedCard[] | null>(null);
   const [importMedia, setImportMedia] = useState<Map<string, { blob: Blob; kind: 'audio' | 'image' }>>(new Map());
+  const [importNative, setImportNative] = useState<NativeImport | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
   const [importParsing, setImportParsing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -41,6 +44,7 @@ const Dashboard: React.FC = () => {
     setImportDeckName('');
     setImportParsed(null);
     setImportMedia(new Map());
+    setImportNative(null);
     setImportParsing(false);
     setImporting(false);
     setImportIsPublic(false);
@@ -52,69 +56,145 @@ const Dashboard: React.FC = () => {
     if (!file) return;
     setImportParsed(null);
     setImportMedia(new Map());
+    setImportNative(null);
     setImportParsing(true);
     try {
-      const { AnkiImportService } = await import("../services/AnkiImportService");
-      const { deckName, cards, mediaBlobs } = await AnkiImportService.parseFile(file);
-      setImportParsed(cards);
-      setImportMedia(mediaBlobs);
-      if (!importDeckName.trim()) {
-        setImportDeckName(deckName ?? file.name.replace(/\.[^.]+$/, ''));
-      }
-      if (cards.length === 0) {
-        toast({ title: t('dashboard.importEmpty'), variant: 'destructive' });
+      const { DeckImportService } = await import("../services/DeckImportService");
+      const result = await DeckImportService.parseFile(file);
+      if (result.kind === 'native') {
+        setImportNative(result);
+        const totalCards = result.decks.reduce((sum, d) => sum + d.cards.length, 0);
+        if (result.decks.length === 0 || totalCards === 0) {
+          toast({ title: t('dashboard.importEmpty'), variant: 'destructive' });
+        }
+      } else {
+        setImportParsed(result.cards);
+        setImportMedia(result.mediaBlobs);
+        if (!importDeckName.trim()) {
+          setImportDeckName(result.deckName ?? file.name.replace(/\.[^.]+$/, ''));
+        }
+        if (result.cards.length === 0) {
+          toast({ title: t('dashboard.importEmpty'), variant: 'destructive' });
+        }
       }
     } catch (error) {
       console.error(error);
       toast({ title: t('dashboard.importError'), variant: 'destructive' });
       setImportParsed(null);
+      setImportNative(null);
     } finally {
       setImportParsing(false);
     }
   };
 
+  const nativeTruncated = importNative?.decks.filter(
+    (d) => d.cards.length > DECK_CARD_LIMIT
+  ) ?? [];
+  const ankiWillTruncate =
+    !importNative && !!importParsed && importParsed.length > DECK_CARD_LIMIT;
+
   const handleImportConfirm = async () => {
+    if (importNative) {
+      setImporting(true);
+      try {
+        const { DeckImportService } = await import("../services/DeckImportService");
+        const { decksCreated, cardsCreated } = await DeckImportService.importNative(
+          currentUser!.id,
+          (currentUser?.user_metadata?.full_name as string | undefined) || currentUser?.email || undefined,
+          importNative,
+          (done, total) => setAudioProgress({ done, total })
+        );
+        const totalRequested = importNative.decks.reduce(
+          (s, d) => s + d.cards.length,
+          0
+        );
+        if (cardsCreated < totalRequested) {
+          toast({
+            title: t('dashboard.importNativeTruncated', {
+              decks: decksCreated,
+              cards: cardsCreated,
+              total: totalRequested,
+              limit: DECK_CARD_LIMIT,
+            }),
+          });
+        } else {
+          toast({
+            title: t('dashboard.importNativeSuccess', {
+              decks: decksCreated,
+              cards: cardsCreated,
+            }),
+          });
+        }
+        setIsImportOpen(false);
+        resetImport();
+        loadDecks();
+      } catch (error) {
+        console.error(error);
+        toast({ title: t('dashboard.importError'), variant: 'destructive' });
+      } finally {
+        setImporting(false);
+        setAudioProgress(null);
+      }
+      return;
+    }
+
     if (!importParsed || importParsed.length === 0 || !importDeckName.trim()) return;
     setImporting(true);
     try {
-      const deckId = await DeckService.createDeck(currentUser!.uid, {
+      const deckId = await DeckService.createDeck(currentUser!.id, {
         title: importDeckName.trim(),
         category: 'General',
         tags: [],
         isPublic: importIsPublic,
-        ownerName: currentUser?.displayName || currentUser?.email || undefined,
+        ownerName: (currentUser?.user_metadata?.full_name as string | undefined) || currentUser?.email || undefined,
       });
 
-      // Persist audio locally (IndexedDB). Cards store the filename ref only.
-      if (importMedia.size > 0) {
-        const { MediaStorageService } = await import("../services/MediaStorageService");
-        setAudioProgress({ done: 0, total: importMedia.size });
-        let done = 0;
-        for (const [ref, { blob, kind }] of importMedia) {
-          await MediaStorageService.put(kind, ref, blob);
-          done++;
-          setAudioProgress({ done, total: importMedia.size });
-        }
-      }
-
-      const cardsForInsert = importParsed.map((c) => ({
+      const keptParsed = importParsed.slice(0, DECK_CARD_LIMIT);
+      const cardsForInsert = keptParsed.map((c) => ({
         front: c.frontHtml ?? c.front,
         back: c.backHtml ?? c.back,
         frontAudio: c.frontAudioRef,
         backAudio: c.backAudioRef,
       }));
 
+      const keptRefs = new Set<string>();
+      for (const c of cardsForInsert) {
+        for (const r of collectCardMediaRefs(c)) keptRefs.add(r.ref);
+      }
+      const mediaToUpload = Array.from(importMedia).filter(([ref]) => keptRefs.has(ref));
+      if (mediaToUpload.length > 0) {
+        const { MediaStorageService } = await import("../services/MediaStorageService");
+        setAudioProgress({ done: 0, total: mediaToUpload.length });
+        let done = 0;
+        for (const [ref, { blob, kind }] of mediaToUpload) {
+          await MediaStorageService.put(kind, ref, blob);
+          done++;
+          setAudioProgress({ done, total: mediaToUpload.length });
+        }
+      }
+
       const count = await CardService.bulkCreateCards(
-        currentUser!.uid,
+        currentUser!.id,
         deckId,
         cardsForInsert
       );
-      toast({
-        title: t('dashboard.importSuccess', {
-          title: importDeckName.trim(),
-          count,
-        }),
-      });
+      if (count < importParsed.length) {
+        toast({
+          title: t('dashboard.importTruncated', {
+            title: importDeckName.trim(),
+            count,
+            total: importParsed.length,
+            limit: DECK_CARD_LIMIT,
+          }),
+        });
+      } else {
+        toast({
+          title: t('dashboard.importSuccess', {
+            title: importDeckName.trim(),
+            count,
+          }),
+        });
+      }
       setIsImportOpen(false);
       resetImport();
       loadDecks();
@@ -135,7 +215,7 @@ const Dashboard: React.FC = () => {
 
   const loadDecks = async () => {
     try {
-      const userDecks = await DeckService.getUserDecks(currentUser!.uid);
+      const userDecks = await DeckService.getUserDecks(currentUser!.id);
       setDecks(userDecks);
     } catch (error) {
       console.error(error);
@@ -151,12 +231,12 @@ const Dashboard: React.FC = () => {
 
     setCreating(true);
     try {
-      await DeckService.createDeck(currentUser!.uid, {
+      await DeckService.createDeck(currentUser!.id, {
         title: newDeckTitle,
         category: 'General',
         tags: [],
         isPublic: isDeckPublic,
-        ownerName: currentUser?.displayName || currentUser?.email || undefined,
+        ownerName: (currentUser?.user_metadata?.full_name as string | undefined) || currentUser?.email || undefined,
       });
       toast({ title: t('dashboard.createSuccess') });
       setNewDeckTitle('');
@@ -188,7 +268,7 @@ const Dashboard: React.FC = () => {
     setExportingAll(true);
     try {
       const { DeckExportService } = await import('../services/DeckExportService');
-      const { blob, filename, count } = await DeckExportService.exportAllDecks(currentUser.uid);
+      const { blob, filename, count } = await DeckExportService.exportAllDecks(currentUser.id);
       if (count === 0) {
         toast({ title: t('dashboard.exportEmpty'), variant: 'destructive' });
         return;
@@ -236,7 +316,7 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setIsImportOpen(true)}>
             <Upload className="w-5 h-5 mr-2" />
-            {t('dashboard.import')}
+            {t('dashboard.importGeneric')}
           </Button>
           <Button variant="outline" onClick={handleExportAll} disabled={exportingAll || decks.length === 0}>
             <Download className="w-5 h-5 mr-2" />
@@ -337,7 +417,7 @@ const Dashboard: React.FC = () => {
             </p>
             <Input
               type="file"
-              accept=".apkg,.colpkg,.txt,.csv,.tsv"
+              accept=".apkg,.colpkg,.zip,.txt,.csv,.tsv"
               onChange={handleImportFileSelect}
               disabled={importParsing || importing}
             />
@@ -355,13 +435,55 @@ const Dashboard: React.FC = () => {
               </p>
             )}
 
-            {importParsed && importParsed.length > 0 && importMedia.size > 0 && (
+            {importNative && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  {t('dashboard.importNativeDetected')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('dashboard.importNativeSummary', {
+                    decks: importNative.decks.length,
+                    cards: importNative.decks.reduce((s, d) => s + d.cards.length, 0),
+                    media: importNative.mediaBlobs.size,
+                  })}
+                </p>
+                {nativeTruncated.length > 0 && (
+                  <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                    {t('dashboard.importLimitWillTruncateNative', {
+                      count: nativeTruncated.length,
+                      limit: DECK_CARD_LIMIT,
+                    })}
+                  </p>
+                )}
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/60">
+                  {importNative.decks.slice(0, 10).map((d, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 p-2 text-xs">
+                      <span className="truncate font-medium">{d.title}</span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {t('dashboard.cardCount', { count: d.cards.length })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {!importNative && importParsed && importParsed.length > 0 && importMedia.size > 0 && (
               <p className="text-xs text-muted-foreground">
                 {t('dashboard.importAudioCount', { count: importMedia.size })}
               </p>
             )}
 
-            {importParsed && importParsed.length > 0 && (
+            {ankiWillTruncate && (
+              <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                {t('dashboard.importLimitWillTruncate', {
+                  total: importParsed?.length ?? 0,
+                  limit: DECK_CARD_LIMIT,
+                })}
+              </p>
+            )}
+
+            {!importNative && importParsed && importParsed.length > 0 && (
               <>
                 <div className="space-y-2">
                   <label className="text-sm font-medium block">
@@ -416,14 +538,18 @@ const Dashboard: React.FC = () => {
               disabled={
                 importing ||
                 importParsing ||
-                !importParsed ||
-                importParsed.length === 0 ||
-                !importDeckName.trim()
+                (importNative
+                  ? importNative.decks.length === 0
+                  : !importParsed || importParsed.length === 0 || !importDeckName.trim())
               }
             >
               {importing
                 ? t('dashboard.importing')
-                : t('dashboard.importConfirm', { count: importParsed?.length ?? 0 })}
+                : importNative
+                ? t('dashboard.importNativeConfirm', { count: importNative.decks.length })
+                : t('dashboard.importConfirm', {
+                    count: Math.min(importParsed?.length ?? 0, DECK_CARD_LIMIT),
+                  })}
             </Button>
           </DialogFooter>
         </DialogContent>

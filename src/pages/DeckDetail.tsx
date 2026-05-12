@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Plus, Trash2, Search, Upload, Pencil, Download } from "lucide-react";
 import { DeckService, type Deck } from "../services/DeckService";
-import { CardService, type Card } from "../services/CardService";
+import { CardService, type Card, DECK_CARD_LIMIT, DeckLimitError } from "../services/CardService";
 import type { ParsedCard } from "../services/AnkiImportService";
 import { PlayAudioButton } from "../components/PlayAudioButton";
 import { CardEditor } from "../components/CardEditor";
@@ -15,6 +15,7 @@ import { LoadingState } from "../components/LoadingState";
 import { useToast } from "../components/ui/use-toast";
 import { Input } from "../components/ui/input";
 import { looksLikeHtml } from "../lib/sanitize";
+import { collectCardMediaRefs } from "../lib/media";
 
 const DeckDetail: React.FC = () => {
   const { deckId } = useParams<{ deckId: string }>();
@@ -74,12 +75,23 @@ const DeckDetail: React.FC = () => {
     }
   };
 
-  const stripHtmlForCheck = (s: string): string =>
-    s.replace(/<[^>]+>/g, '').trim();
+  const hasCardContent = (s: string): boolean => {
+    if (s.replace(/<[^>]+>/g, '').trim().length > 0) return true;
+    return /<(img|audio)\b/i.test(s);
+  };
+
+  const atLimit = !editingCard && cards.length >= DECK_CARD_LIMIT;
 
   const handleSaveCard = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripHtmlForCheck(front) || !stripHtmlForCheck(back)) return;
+    if (!hasCardContent(front) || !hasCardContent(back)) return;
+    if (atLimit) {
+      toast({
+        title: t('deckDetail.limitReached', { limit: DECK_CARD_LIMIT }),
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -91,7 +103,7 @@ const DeckDetail: React.FC = () => {
         setFront('');
         setBack('');
       } else {
-        await CardService.createCard(currentUser!.uid, deckId!, {
+        await CardService.createCard(currentUser!.id, deckId!, {
           front,
           back,
         });
@@ -181,40 +193,80 @@ const DeckDetail: React.FC = () => {
     }
   };
 
+  const importRoom = Math.max(0, DECK_CARD_LIMIT - cards.length);
+  const importWillTruncate = !!importParsed && importParsed.length > importRoom;
+  const importBlocked = !!importParsed && importRoom <= 0;
+
   const handleImportConfirm = async () => {
     if (!importParsed || importParsed.length === 0) return;
+    if (importBlocked) {
+      toast({
+        title: t('deckDetail.limitReached', { limit: DECK_CARD_LIMIT }),
+        variant: 'destructive',
+      });
+      return;
+    }
     setImporting(true);
     try {
-      if (importMedia.size > 0) {
-        const { MediaStorageService } = await import("../services/MediaStorageService");
-        setAudioProgress({ done: 0, total: importMedia.size });
-        let done = 0;
-        for (const [ref, { blob, kind }] of importMedia) {
-          await MediaStorageService.put(kind, ref, blob);
-          done++;
-          setAudioProgress({ done, total: importMedia.size });
-        }
-      }
-
-      const cardsForInsert = importParsed.map((c) => ({
+      const keptParsed = importParsed.slice(0, importRoom);
+      const cardsForInsert = keptParsed.map((c) => ({
         front: c.frontHtml ?? c.front,
         back: c.backHtml ?? c.back,
         frontAudio: c.frontAudioRef,
         backAudio: c.backAudioRef,
       }));
 
+      const keptRefs = new Set<string>();
+      for (const c of cardsForInsert) {
+        for (const r of collectCardMediaRefs(c)) keptRefs.add(r.ref);
+      }
+      const mediaToUpload = Array.from(importMedia).filter(([ref]) =>
+        keptRefs.has(ref)
+      );
+      if (mediaToUpload.length > 0) {
+        const { MediaStorageService } = await import("../services/MediaStorageService");
+        setAudioProgress({ done: 0, total: mediaToUpload.length });
+        let done = 0;
+        for (const [ref, { blob, kind }] of mediaToUpload) {
+          await MediaStorageService.put(kind, ref, blob);
+          done++;
+          setAudioProgress({ done, total: mediaToUpload.length });
+        }
+      }
+
       const count = await CardService.bulkCreateCards(
-        currentUser!.uid,
+        currentUser!.id,
         deckId!,
         cardsForInsert
       );
-      toast({ title: t('deckDetail.importSuccess', { count }) });
+      if (count < importParsed.length) {
+        toast({
+          title: t('deckDetail.importTruncated', {
+            count,
+            total: importParsed.length,
+            limit: DECK_CARD_LIMIT,
+          }),
+        });
+      } else {
+        toast({ title: t('deckDetail.importSuccess', { count }) });
+      }
       setIsImportOpen(false);
       resetImport();
       loadData();
     } catch (error) {
       console.error(error);
-      toast({ title: t('deckDetail.importError'), variant: 'destructive' });
+      if (error instanceof DeckLimitError) {
+        toast({
+          title: t('deckDetail.limitReachedImport', {
+            current: error.current,
+            attempting: error.attempting,
+            limit: error.limit,
+          }),
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: t('deckDetail.importError'), variant: 'destructive' });
+      }
     } finally {
       setImporting(false);
     }
@@ -255,7 +307,7 @@ const DeckDetail: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold">{deck.title}</h1>
             <p className="text-muted-foreground">
-              {t('deckDetail.cardCount', { count: cards.length })}
+              {t('deckDetail.cardCountLimit', { count: cards.length, limit: DECK_CARD_LIMIT })}
             </p>
           </div>
         </div>
@@ -268,7 +320,7 @@ const DeckDetail: React.FC = () => {
             <Download className="w-5 h-5 mr-2" />
             {exportingDeck ? t('deckDetail.exporting') : t('deckDetail.exportDeck')}
           </Button>
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} disabled={cards.length >= DECK_CARD_LIMIT}>
             <Plus className="w-5 h-5 mr-2" />
             {t('deckDetail.addCard')}
           </Button>
@@ -303,7 +355,7 @@ const DeckDetail: React.FC = () => {
                     )}
                     <RichContent
                       html={card.front}
-                      className="text-base font-medium prose prose-sm dark:prose-invert max-w-none"
+                      className="rich-text text-base font-medium"
                     />
                   </div>
                   <div className="flex items-start gap-2">
@@ -312,7 +364,7 @@ const DeckDetail: React.FC = () => {
                     )}
                     <RichContent
                       html={card.back}
-                      className="text-muted-foreground prose prose-sm dark:prose-invert max-w-none"
+                      className="rich-text text-muted-foreground"
                     />
                   </div>
                 </div>
@@ -387,6 +439,19 @@ const DeckDetail: React.FC = () => {
                     </span>
                   )}
                 </p>
+                {importBlocked ? (
+                  <p className="text-xs font-medium text-red-500">
+                    {t('deckDetail.limitReached', { limit: DECK_CARD_LIMIT })}
+                  </p>
+                ) : importWillTruncate ? (
+                  <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                    {t('deckDetail.importWillTruncate', {
+                      room: importRoom,
+                      total: importParsed.length,
+                      limit: DECK_CARD_LIMIT,
+                    })}
+                  </p>
+                ) : null}
                 <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/60">
                   {importParsed.slice(0, 5).map((c, i) => (
                     <div key={i} className="grid grid-cols-2 gap-2 p-2 text-xs">
@@ -413,11 +478,19 @@ const DeckDetail: React.FC = () => {
             <Button
               type="button"
               onClick={handleImportConfirm}
-              disabled={importing || importParsing || !importParsed || importParsed.length === 0}
+              disabled={
+                importing ||
+                importParsing ||
+                !importParsed ||
+                importParsed.length === 0 ||
+                importBlocked
+              }
             >
               {importing
                 ? t('deckDetail.importing')
-                : t('deckDetail.importConfirm', { count: importParsed?.length ?? 0 })}
+                : t('deckDetail.importConfirm', {
+                    count: Math.min(importParsed?.length ?? 0, importRoom),
+                  })}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -464,7 +537,12 @@ const DeckDetail: React.FC = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={saving || !stripHtmlForCheck(front) || !stripHtmlForCheck(back)}
+                disabled={
+                  saving ||
+                  !hasCardContent(front) ||
+                  !hasCardContent(back) ||
+                  atLimit
+                }
               >
                 {saving
                   ? t('common.loading')

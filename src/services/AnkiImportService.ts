@@ -3,6 +3,11 @@ import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { decompress as zstdDecompress } from 'fzstd';
 import { sanitizeRichHtml } from '../lib/sanitize';
+import {
+  createSanitizeContext,
+  sanitizeMediaRef,
+  type SanitizeContext,
+} from '../lib/media';
 import type { MediaKind } from './MediaStorageService';
 
 export interface ParsedCard {
@@ -84,7 +89,7 @@ interface RichExtract {
   firstAudio?: string;
 }
 
-const extractRich = (input: string): RichExtract => {
+const extractRich = (input: string, ctx: SanitizeContext): RichExtract => {
   if (!input) {
     return { html: '', text: '', audioRefs: [], imageRefs: [] };
   }
@@ -94,15 +99,14 @@ const extractRich = (input: string): RichExtract => {
 
   const audioRefs: string[] = [];
   let firstAudio: string | undefined;
-  // Replace [sound:foo.mp3] with <audio> tag pointing to media://foo.mp3
   const withAudio = decloze.replace(SOUND_RE, (_m, fname: string) => {
-    const ref = fname.trim();
-    if (!audioRefs.includes(ref)) audioRefs.push(ref);
-    if (!firstAudio) firstAudio = ref;
-    return `<audio controls src="media://${ref}"></audio>`;
+    const original = fname.trim();
+    const safe = sanitizeMediaRef(original, ctx);
+    if (!audioRefs.includes(safe)) audioRefs.push(safe);
+    if (!firstAudio) firstAudio = safe;
+    return `<audio controls src="media://${safe}"></audio>`;
   });
 
-  // Rewrite <img src="foo.png"> to use media:// scheme when path is a bare filename.
   const imageRefs: string[] = [];
   const withImages = withAudio.replace(IMG_TAG_RE, (full, attrs: string) => {
     const m = attrs.match(SRC_ATTR_RE);
@@ -110,14 +114,15 @@ const extractRich = (input: string): RichExtract => {
     const rawSrc = (m[1] ?? m[2] ?? m[3] ?? '').trim();
     if (!rawSrc) return full;
     if (/^(https?:|data:|media:\/\/)/i.test(rawSrc)) return full;
-    let ref = rawSrc.replace(/^\.\//, '');
+    let original = rawSrc.replace(/^\.\//, '');
     try {
-      ref = decodeURIComponent(ref);
+      original = decodeURIComponent(original);
     } catch {
       // keep raw if malformed
     }
-    if (!imageRefs.includes(ref)) imageRefs.push(ref);
-    const newAttrs = attrs.replace(SRC_ATTR_RE, `src="media://${ref}"`);
+    const safe = sanitizeMediaRef(original, ctx);
+    if (!imageRefs.includes(safe)) imageRefs.push(safe);
+    const newAttrs = attrs.replace(SRC_ATTR_RE, `src="media://${safe}"`);
     return `<img${newAttrs}>`;
   });
 
@@ -181,47 +186,279 @@ const detectDelimiter = (lines: string[]): string => {
   return '\t';
 };
 
-const fieldsToCard = (parts: string[]): ParsedCard | null => {
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const audioTagsHtml = (refs: string[]): string =>
+  refs.map((r) => `<audio controls src="media://${r}"></audio>`).join('');
+
+const collectAllAudioRefs = (
+  parts: string[],
+  ctx: SanitizeContext
+): { perField: string[][]; all: string[] } => {
+  const all: string[] = [];
+  const seen = new Set<string>();
+  const perField: string[][] = parts.map(() => []);
+  for (let i = 0; i < parts.length; i++) {
+    const r = extractRich(parts[i] ?? '', ctx);
+    perField[i] = r.audioRefs;
+    for (const a of r.audioRefs) {
+      if (!seen.has(a)) {
+        seen.add(a);
+        all.push(a);
+      }
+    }
+  }
+  return { perField, all };
+};
+
+export interface ModelInfo {
+  fieldNames: string[];
+  /** Field ords that appear in any template's qfmt (front side). */
+  frontOrds: Set<number>;
+  /** Field ords that appear in any template's afmt (back side), excluding those already on front via {{FrontSide}}. */
+  backOnlyOrds: Set<number>;
+}
+
+const escapeRegex = (s: string): string =>
+  s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const fieldsReferenced = (
+  template: string,
+  fieldNames: string[]
+): Set<number> => {
+  const ords = new Set<number>();
+  fieldNames.forEach((name, ord) => {
+    if (!name) return;
+    const re = new RegExp(`\\{\\{[^}]*?\\b${escapeRegex(name)}\\b[^}]*?\\}\\}`);
+    if (re.test(template)) ords.add(ord);
+  });
+  return ords;
+};
+
+const buildModelInfo = (
+  fieldNames: string[],
+  tmpls: Array<{ qfmt: string; afmt: string }>
+): ModelInfo => {
+  const frontOrds = new Set<number>();
+  const backAllOrds = new Set<number>();
+  for (const t of tmpls) {
+    const qOrds = fieldsReferenced(t.qfmt, fieldNames);
+    const aOrds = fieldsReferenced(t.afmt, fieldNames);
+    qOrds.forEach((o) => frontOrds.add(o));
+    aOrds.forEach((o) => backAllOrds.add(o));
+    if (/\{\{FrontSide\}\}/.test(t.afmt)) {
+      qOrds.forEach((o) => backAllOrds.add(o));
+    }
+  }
+  const backOnlyOrds = new Set<number>();
+  backAllOrds.forEach((o) => {
+    if (!frontOrds.has(o)) backOnlyOrds.add(o);
+  });
+  return { fieldNames, frontOrds, backOnlyOrds };
+};
+
+const fieldsToCard = (
+  parts: string[],
+  ctx: SanitizeContext,
+  model: ModelInfo | null
+): ParsedCard | null => {
   const cloze = splitClozeFields(parts.join('\n'));
   if (cloze) {
-    const frontRich = extractRich(parts[0] ?? '');
-    return {
-      front: cloze.front,
-      back: cloze.back,
-      frontAudioRef: frontRich.firstAudio,
-    };
+    const seen = new Set<string>();
+    const allAudios: string[] = [];
+    for (const p of parts) {
+      const r = extractRich(p ?? '', ctx);
+      for (const a of r.audioRefs) {
+        if (!seen.has(a)) {
+          seen.add(a);
+          allAudios.push(a);
+        }
+      }
+    }
+    const audioBlock = audioTagsHtml(allAudios);
+    const frontHtml = sanitizeRichHtml(`<p>${escapeHtml(cloze.front)}</p>${audioBlock}`);
+    const backHtml = sanitizeRichHtml(`<p>${escapeHtml(cloze.back)}</p>${audioBlock}`);
+    return { front: cloze.front, back: cloze.back, frontHtml, backHtml };
   }
 
+  // Model-driven routing — accurate per Anki template.
+  // Skip when there are no back-only fields (e.g. multi-template reverse notes),
+  // where the heuristic gives better results than a front-only card.
+  if (model && model.frontOrds.size > 0 && model.backOnlyOrds.size > 0) {
+    const frontHtmlParts: string[] = [];
+    const backHtmlParts: string[] = [];
+    const frontTexts: string[] = [];
+    const backTexts: string[] = [];
+    for (let ord = 0; ord < parts.length; ord++) {
+      const raw = parts[ord] ?? '';
+      if (!raw) continue;
+      const r = extractRich(raw, ctx);
+      if (model.frontOrds.has(ord)) {
+        if (r.html) frontHtmlParts.push(r.html);
+        if (r.text) frontTexts.push(r.text);
+      } else if (model.backOnlyOrds.has(ord)) {
+        if (r.html) backHtmlParts.push(r.html);
+        if (r.text) backTexts.push(r.text);
+      }
+    }
+    const frontHtml = sanitizeRichHtml(frontHtmlParts.join(''));
+    const backHtml = sanitizeRichHtml(backHtmlParts.join(''));
+    const front = frontTexts.join(' ').trim();
+    const back = backTexts.join(' ').trim();
+    if (!front && !frontHtml && !back && !backHtml) return null;
+    return { front, back, frontHtml, backHtml };
+  }
+
+  // Fallback heuristic (when model info is missing):
+  //   parts[0] = front, first non-empty parts[i>=1] = back,
+  //   extras (audios in other fields) go to FRONT — most Anki vocab decks
+  //   keep audio with the term on front.
+  const { perField, all: allAudios } = collectAllAudioRefs(parts, ctx);
   const rawFront = parts[0] ?? '';
-  const frontRich = extractRich(rawFront);
+  const frontRich = extractRich(rawFront, ctx);
   if (!frontRich.text && !frontRich.firstAudio && frontRich.imageRefs.length === 0) {
     return null;
   }
 
+  let backIdx = -1;
+  let backRichResult: ReturnType<typeof extractRich> | null = null;
   for (let i = 1; i < parts.length; i++) {
-    const rawBack = parts[i] ?? '';
-    const backRich = extractRich(rawBack);
-    if (backRich.text || backRich.firstAudio || backRich.imageRefs.length > 0) {
-      return {
-        front: frontRich.text,
-        back: backRich.text,
-        frontHtml: frontRich.html,
-        backHtml: backRich.html,
-        frontAudioRef: frontRich.firstAudio,
-        backAudioRef: backRich.firstAudio,
-      };
+    const r = extractRich(parts[i] ?? '', ctx);
+    if (r.text || r.firstAudio || r.imageRefs.length > 0) {
+      backIdx = i;
+      backRichResult = r;
+      break;
     }
   }
-  // Allow front-only cards if they have audio or images
+
+  const audiosUsed = new Set<string>([
+    ...perField[0],
+    ...(backIdx >= 0 ? perField[backIdx] : []),
+  ]);
+  const extraAudios = allAudios.filter((a) => !audiosUsed.has(a));
+  const extraTags = audioTagsHtml(extraAudios);
+
+  if (backRichResult) {
+    const frontHtml = extraTags
+      ? sanitizeRichHtml(frontRich.html + extraTags)
+      : frontRich.html;
+    return {
+      front: frontRich.text,
+      back: backRichResult.text,
+      frontHtml,
+      backHtml: backRichResult.html,
+    };
+  }
+
   if (frontRich.firstAudio || frontRich.imageRefs.length > 0) {
     return {
       front: frontRich.text,
       back: '',
       frontHtml: frontRich.html,
-      frontAudioRef: frontRich.firstAudio,
     };
   }
   return null;
+};
+
+// CardTemplateConfig proto: field 1 = q_format (string), field 2 = a_format (string)
+const readTemplateConfig = (buf: Uint8Array): { qfmt: string; afmt: string } => {
+  const out = { qfmt: '', afmt: '' };
+  const decoder = new TextDecoder('utf-8');
+  let p = 0;
+  while (p < buf.length) {
+    const [tag, p1] = readVarint(buf, p);
+    p = p1;
+    const wireType = tag & 0x07;
+    const fieldNum = tag >>> 3;
+    if (wireType === 2) {
+      const [len, p2] = readVarint(buf, p);
+      p = p2;
+      const slice = buf.subarray(p, p + len);
+      p += len;
+      if (fieldNum === 1) out.qfmt = decoder.decode(slice);
+      else if (fieldNum === 2) out.afmt = decoder.decode(slice);
+    } else if (wireType === 0) {
+      const [, p2] = readVarint(buf, p);
+      p = p2;
+    } else if (wireType === 1) {
+      p += 8;
+    } else if (wireType === 5) {
+      p += 4;
+    } else {
+      break;
+    }
+  }
+  return out;
+};
+
+const loadModels = (db: Database): Map<string, ModelInfo> => {
+  const result = new Map<string, ModelInfo>();
+
+  // V2: col.models JSON
+  try {
+    const res = db.exec('SELECT models FROM col LIMIT 1');
+    const json = String(res[0]?.values?.[0]?.[0] ?? '');
+    if (json && json !== '{}') {
+      const models = JSON.parse(json) as Record<string, any>;
+      for (const [id, m] of Object.entries(models)) {
+        const fieldNames: string[] = ((m.flds ?? []) as any[])
+          .slice()
+          .sort((a, b) => (a?.ord ?? 0) - (b?.ord ?? 0))
+          .map((f) => String(f?.name ?? ''));
+        const tmpls = ((m.tmpls ?? []) as any[]).map((t) => ({
+          qfmt: String(t?.qfmt ?? ''),
+          afmt: String(t?.afmt ?? ''),
+        }));
+        result.set(id, buildModelInfo(fieldNames, tmpls));
+      }
+    }
+  } catch (err) {
+    console.warn('[AnkiImport] could not parse col.models JSON:', err);
+  }
+  if (result.size > 0) return result;
+
+  // V3: notetypes + fields + templates tables
+  try {
+    const fieldsByNt = new Map<string, Array<{ ord: number; name: string }>>();
+    const fres = db.exec('SELECT ntid, ord, name FROM fields');
+    if (fres.length) {
+      for (const row of fres[0].values) {
+        const ntid = String(row[0]);
+        const ord = Number(row[1]);
+        const name = String(row[2] ?? '');
+        const arr = fieldsByNt.get(ntid) ?? [];
+        arr.push({ ord, name });
+        fieldsByNt.set(ntid, arr);
+      }
+    }
+    const tmplsByNt = new Map<string, Array<{ qfmt: string; afmt: string }>>();
+    const tres = db.exec('SELECT ntid, ord, config FROM templates');
+    if (tres.length) {
+      for (const row of tres[0].values) {
+        const ntid = String(row[0]);
+        const cfg = row[2];
+        if (!(cfg instanceof Uint8Array)) continue;
+        const arr = tmplsByNt.get(ntid) ?? [];
+        arr.push(readTemplateConfig(cfg));
+        tmplsByNt.set(ntid, arr);
+      }
+    }
+    for (const [ntid, flds] of fieldsByNt) {
+      flds.sort((a, b) => a.ord - b.ord);
+      const fieldNames = flds.map((f) => f.name);
+      const tmpls = tmplsByNt.get(ntid) ?? [];
+      result.set(ntid, buildModelInfo(fieldNames, tmpls));
+    }
+  } catch (err) {
+    console.warn('[AnkiImport] could not parse V3 notetypes tables:', err);
+  }
+
+  return result;
 };
 
 const loadAnkiDb = async (zip: JSZip): Promise<Uint8Array> => {
@@ -238,9 +475,174 @@ const loadAnkiDb = async (zip: JSZip): Promise<Uint8Array> => {
   return plainFile.async('uint8array');
 };
 
+const ZSTD_MAGIC = [0x28, 0xb5, 0x2f, 0xfd];
+
+const hasZstdMagic = (b: Uint8Array): boolean =>
+  b.length >= 4 &&
+  b[0] === ZSTD_MAGIC[0] &&
+  b[1] === ZSTD_MAGIC[1] &&
+  b[2] === ZSTD_MAGIC[2] &&
+  b[3] === ZSTD_MAGIC[3];
+
+const mimeFromName = (name: string): string => {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  switch (ext) {
+    case 'mp3': return 'audio/mpeg';
+    case 'ogg': case 'opus': return 'audio/ogg';
+    case 'wav': return 'audio/wav';
+    case 'm4a': case 'mp4': return 'audio/mp4';
+    case 'webm': return 'audio/webm';
+    case 'aac': return 'audio/aac';
+    case 'flac': return 'audio/flac';
+    case 'png': return 'image/png';
+    case 'jpg': case 'jpeg': return 'image/jpeg';
+    case 'gif': return 'image/gif';
+    case 'webp': return 'image/webp';
+    case 'svg': return 'image/svg+xml';
+    case 'bmp': return 'image/bmp';
+    case 'avif': return 'image/avif';
+    default: return 'application/octet-stream';
+  }
+};
+
+const readMediaEntry = async (
+  zip: JSZip,
+  key: string
+): Promise<Uint8Array | null> => {
+  let entry = zip.file(key);
+  let forceDecompress = false;
+  if (!entry) {
+    entry = zip.file(`${key}.zst`);
+    if (entry) forceDecompress = true;
+  } else if (entry.name.endsWith('.zst')) {
+    forceDecompress = true;
+  }
+  if (!entry) return null;
+  const bytes = await entry.async('uint8array');
+  if (forceDecompress || hasZstdMagic(bytes)) {
+    try {
+      return zstdDecompress(bytes);
+    } catch (err) {
+      console.warn('[AnkiImport] zstd decompress failed for', key, err);
+      return null;
+    }
+  }
+  return bytes;
+};
+
+/**
+ * Modern .apkg (V3 / anki21b) stores the `media` index as protobuf
+ * `MediaEntries { repeated MediaEntry entries = 1 }` where
+ * `MediaEntry { string name = 1; uint32 size = 2; bytes sha1 = 3 }`.
+ * The zip filename for each entry is its zero-based index.
+ */
+const readVarint = (buf: Uint8Array, pos: number): [number, number] => {
+  let value = 0;
+  let shift = 0;
+  let p = pos;
+  while (p < buf.length) {
+    const b = buf[p++];
+    value += (b & 0x7f) * Math.pow(2, shift);
+    if ((b & 0x80) === 0) return [value, p];
+    shift += 7;
+    if (shift > 49) break;
+  }
+  return [value, p];
+};
+
+const decodeMediaEntriesProto = (buf: Uint8Array): string[] => {
+  const out: string[] = [];
+  const decoder = new TextDecoder('utf-8');
+  let p = 0;
+  while (p < buf.length) {
+    const [tag, p1] = readVarint(buf, p);
+    p = p1;
+    const wireType = tag & 0x07;
+    const fieldNum = tag >>> 3;
+    if (fieldNum === 1 && wireType === 2) {
+      const [len, p2] = readVarint(buf, p);
+      p = p2;
+      const entry = buf.subarray(p, p + len);
+      p += len;
+      let ep = 0;
+      let name = '';
+      while (ep < entry.length) {
+        const [etag, ep1] = readVarint(entry, ep);
+        ep = ep1;
+        const ewire = etag & 0x07;
+        const efield = etag >>> 3;
+        if (efield === 1 && ewire === 2) {
+          const [elen, ep2] = readVarint(entry, ep);
+          ep = ep2;
+          name = decoder.decode(entry.subarray(ep, ep + elen));
+          ep += elen;
+        } else if (ewire === 0) {
+          const [, ep2] = readVarint(entry, ep);
+          ep = ep2;
+        } else if (ewire === 2) {
+          const [elen, ep2] = readVarint(entry, ep);
+          ep = ep2 + elen;
+        } else if (ewire === 1) {
+          ep += 8;
+        } else if (ewire === 5) {
+          ep += 4;
+        } else {
+          break;
+        }
+      }
+      out.push(name);
+    } else if (wireType === 0) {
+      const [, p2] = readVarint(buf, p);
+      p = p2;
+    } else if (wireType === 2) {
+      const [len, p2] = readVarint(buf, p);
+      p = p2 + len;
+    } else if (wireType === 1) {
+      p += 8;
+    } else if (wireType === 5) {
+      p += 4;
+    } else {
+      break;
+    }
+  }
+  return out;
+};
+
+const buildNameToKey = async (
+  mediaIndex: JSZip.JSZipObject
+): Promise<Record<string, string>> => {
+  const bytes = await mediaIndex.async('uint8array');
+  // Legacy: JSON {key: filename}
+  try {
+    const text = new TextDecoder('utf-8').decode(bytes);
+    const map = JSON.parse(text) as Record<string, string>;
+    const nameToKey: Record<string, string> = {};
+    for (const [k, v] of Object.entries(map)) {
+      if (typeof v === 'string') nameToKey[v] = k;
+    }
+    return nameToKey;
+  } catch {
+    // fall through to proto
+  }
+  // Modern: protobuf MediaEntries (optionally zstd-compressed)
+  const protoBytes = hasZstdMagic(bytes) ? zstdDecompress(bytes) : bytes;
+  try {
+    const names = decodeMediaEntriesProto(protoBytes);
+    const nameToKey: Record<string, string> = {};
+    names.forEach((name, idx) => {
+      if (name) nameToKey[name] = String(idx);
+    });
+    return nameToKey;
+  } catch (err) {
+    console.warn('[AnkiImport] could not parse media index as proto:', err);
+    return {};
+  }
+};
+
 const loadMediaBlobs = async (
   zip: JSZip,
-  neededRefs: Map<string, MediaKind>
+  neededRefs: Map<string, MediaKind>,
+  ctx: SanitizeContext
 ): Promise<Map<string, MediaBlobEntry>> => {
   const result = new Map<string, MediaBlobEntry>();
   if (neededRefs.size === 0) return result;
@@ -248,27 +650,59 @@ const loadMediaBlobs = async (
   const mediaIndex = zip.file('media');
   if (!mediaIndex) return result;
 
-  let nameToKey: Record<string, string> = {};
-  try {
-    const text = await mediaIndex.async('string');
-    const map = JSON.parse(text) as Record<string, string>;
-    for (const [k, v] of Object.entries(map)) {
-      if (typeof v === 'string') nameToKey[v] = k;
-    }
-  } catch (err) {
-    console.warn('[AnkiImport] could not parse media index as JSON:', err);
-    return result;
-  }
+  const nameToKey = await buildNameToKey(mediaIndex);
 
-  for (const [ref, kind] of neededRefs) {
-    const key = nameToKey[ref];
-    if (!key) continue;
-    const f = zip.file(key);
-    if (!f) continue;
-    const blob = await f.async('blob');
-    result.set(ref, { blob, kind });
+  for (const [safeRef, kind] of neededRefs) {
+    const originalRef = ctx.safeToOriginal.get(safeRef) ?? safeRef;
+    const key = nameToKey[originalRef];
+    if (!key) {
+      console.warn(
+        '[AnkiImport] media entry not found in index:',
+        originalRef,
+        '(safe:',
+        safeRef,
+        ')'
+      );
+      continue;
+    }
+    const bytes = await readMediaEntry(zip, key);
+    if (!bytes) {
+      console.warn('[AnkiImport] media file not found in zip:', originalRef, '→', key);
+      continue;
+    }
+    const blob = new Blob([bytes], { type: mimeFromName(safeRef) });
+    result.set(safeRef, { blob, kind });
   }
   return result;
+};
+
+const decodeRef = (raw: string): string => {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+};
+
+const collectRefsFromHtml = (
+  html: string,
+  out: Map<string, MediaKind>
+): void => {
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  doc.querySelectorAll('img').forEach((el) => {
+    const src = el.getAttribute('src') ?? '';
+    const m = src.match(/^media:\/\/(.+)$/);
+    if (!m) return;
+    const ref = decodeRef(m[1]);
+    if (!out.has(ref)) out.set(ref, 'image');
+  });
+  doc.querySelectorAll('audio, source').forEach((el) => {
+    const src = el.getAttribute('src') ?? '';
+    const m = src.match(/^media:\/\/(.+)$/);
+    if (!m) return;
+    const ref = decodeRef(m[1]);
+    if (!out.has(ref)) out.set(ref, 'audio');
+  });
 };
 
 const collectRefs = (cards: ParsedCard[]): Map<string, MediaKind> => {
@@ -279,18 +713,8 @@ const collectRefs = (cards: ParsedCard[]): Map<string, MediaKind> => {
   for (const c of cards) {
     addAudio(c.frontAudioRef);
     addAudio(c.backAudioRef);
-    // Scan HTML for media:// refs and classify by extension
-    for (const html of [c.frontHtml, c.backHtml]) {
-      if (!html) continue;
-      const re = /media:\/\/([^"'\s>)]+)/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(html))) {
-        const ref = m[1];
-        if (needed.has(ref)) continue;
-        if (isAudioFilename(ref)) needed.set(ref, 'audio');
-        else if (isImageFilename(ref)) needed.set(ref, 'image');
-      }
-    }
+    if (c.frontHtml) collectRefsFromHtml(c.frontHtml, needed);
+    if (c.backHtml) collectRefsFromHtml(c.backHtml, needed);
   }
   return needed;
 };
@@ -301,11 +725,12 @@ export const AnkiImportService = {
     const lines = text.split(/\r?\n/);
     const delimiter = detectDelimiter(lines);
     const cards: ParsedCard[] = [];
+    const ctx = createSanitizeContext();
 
     for (const raw of lines) {
       if (!raw || raw.startsWith('#')) continue;
       const fields = splitDelimited(raw, delimiter);
-      const card = fieldsToCard(fields);
+      const card = fieldsToCard(fields, ctx, null);
       if (card) cards.push(card);
     }
 
@@ -317,6 +742,7 @@ export const AnkiImportService = {
     const dbBytes = await loadAnkiDb(zip);
     const SQL = await getSql();
     const database: Database = new SQL.Database(dbBytes);
+    const ctx = createSanitizeContext();
 
     try {
       let deckName: string | undefined;
@@ -346,22 +772,25 @@ export const AnkiImportService = {
         }
       }
 
-      const res = database.exec('SELECT flds FROM notes');
+      const models = loadModels(database);
+      const res = database.exec('SELECT mid, flds FROM notes');
       const cards: ParsedCard[] = [];
       let totalNotes = 0;
 
       if (res.length) {
         for (const row of res[0].values) {
           totalNotes++;
-          const flds = String(row[0] ?? '');
+          const mid = String(row[0] ?? '');
+          const flds = String(row[1] ?? '');
           const parts = flds.split(FIELD_SEP);
-          const card = fieldsToCard(parts);
+          const model = models.get(mid) ?? null;
+          const card = fieldsToCard(parts, ctx, model);
           if (card) cards.push(card);
         }
       }
 
       const neededRefs = collectRefs(cards);
-      const mediaBlobs = await loadMediaBlobs(zip, neededRefs);
+      const mediaBlobs = await loadMediaBlobs(zip, neededRefs, ctx);
 
       if (totalNotes > 0 && cards.length === 0) {
         console.warn(
