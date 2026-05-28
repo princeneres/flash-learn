@@ -15,6 +15,7 @@ import {
 } from "../components/ui/dropdown-menu";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { InstallAppButton } from "../components/InstallAppButton";
 
 const MainLayout: React.FC = () => {
     const { t } = useTranslation();
@@ -68,6 +69,7 @@ const MainLayout: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
+                            <InstallAppButton />
                             <LanguageSwitcher />
                             <ThemeToggle />
                             {currentUser ? (
