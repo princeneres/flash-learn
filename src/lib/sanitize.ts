@@ -40,6 +40,7 @@ const ALLOWED_ATTR = [
   'controls',
   'type',
   'class',
+  'data-tex',
 ];
 
 const URI_REGEX = /^(?:(?:https?|mailto|tel|media):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;

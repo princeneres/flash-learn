@@ -9,7 +9,7 @@ import {
   type Editor,
 } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
+import Image, { type ImageOptions } from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import { ImageNodeView, AudioNodeView } from './MediaNodeView';
 import {
@@ -61,7 +61,7 @@ const AudioNode = Node.create({
 const MediaImage = Image.extend({
   addOptions() {
     return {
-      ...this.parent?.(),
+      ...(this.parent?.() as ImageOptions),
       inline: true,
       allowBase64: false,
     };

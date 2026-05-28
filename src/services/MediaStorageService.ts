@@ -86,7 +86,8 @@ const storagePath = (uid: string, kind: MediaKind, ref: string): string =>
 const memUrlCache = new Map<string, string>();
 const memBlobCache = new Map<string, Blob>();
 
-const cacheKey = (kind: MediaKind, ref: string) => `${kind}:${ref}`;
+const cacheKey = (uid: string, kind: MediaKind, ref: string) =>
+  `${uid}:${kind}:${ref}`;
 const urlKey = (uid: string, kind: MediaKind, ref: string) =>
   `${uid}:${kind}:${ref}`;
 
@@ -101,18 +102,21 @@ export const MediaStorageService = {
         contentType: blob.type || undefined,
       });
     if (error) throw error;
-    memBlobCache.set(cacheKey(kind, ref), blob);
-    memUrlCache.delete(cacheKey(kind, ref));
+    memBlobCache.set(cacheKey(uid, kind, ref), blob);
+    memUrlCache.delete(cacheKey(uid, kind, ref));
     await urlCacheDelete(urlKey(uid, kind, ref));
   },
 
-  getUrl: async (kind: MediaKind, ref: string): Promise<string | null> => {
-    const k = cacheKey(kind, ref);
+  getUrl: async (
+    kind: MediaKind,
+    ref: string,
+    ownerId?: string
+  ): Promise<string | null> => {
+    const uid = ownerId ?? UserSettingsService.getCurrentUid();
+    if (!uid) return null;
+    const k = cacheKey(uid, kind, ref);
     const inMem = memUrlCache.get(k);
     if (inMem) return inMem;
-
-    const uid = UserSettingsService.getCurrentUid();
-    if (!uid) return null;
 
     const persisted = await urlCacheGet(urlKey(uid, kind, ref));
     if (
@@ -136,28 +140,32 @@ export const MediaStorageService = {
     return entry.url;
   },
 
-  getBlob: async (kind: MediaKind, ref: string): Promise<Blob | null> => {
-    const cached = memBlobCache.get(cacheKey(kind, ref));
-    if (cached) return cached;
-    const uid = UserSettingsService.getCurrentUid();
+  getBlob: async (
+    kind: MediaKind,
+    ref: string,
+    ownerId?: string
+  ): Promise<Blob | null> => {
+    const uid = ownerId ?? UserSettingsService.getCurrentUid();
     if (!uid) return null;
+    const cached = memBlobCache.get(cacheKey(uid, kind, ref));
+    if (cached) return cached;
     const { data, error } = await supabase.storage
       .from(BUCKET)
       .download(storagePath(uid, kind, ref));
     if (error || !data) return null;
-    memBlobCache.set(cacheKey(kind, ref), data);
+    memBlobCache.set(cacheKey(uid, kind, ref), data);
     return data;
   },
 
-  getAudioUrl: async (ref: string): Promise<string | null> =>
-    MediaStorageService.getUrl('audio', ref),
+  getAudioUrl: async (ref: string, ownerId?: string): Promise<string | null> =>
+    MediaStorageService.getUrl('audio', ref, ownerId),
 
   delete: async (kind: MediaKind, ref: string): Promise<void> => {
     const uid = UserSettingsService.getCurrentUid();
     if (!uid) return;
     await supabase.storage.from(BUCKET).remove([storagePath(uid, kind, ref)]);
-    memUrlCache.delete(cacheKey(kind, ref));
-    memBlobCache.delete(cacheKey(kind, ref));
+    memUrlCache.delete(cacheKey(uid, kind, ref));
+    memBlobCache.delete(cacheKey(uid, kind, ref));
     await urlCacheDelete(urlKey(uid, kind, ref));
   },
 
@@ -168,8 +176,8 @@ export const MediaStorageService = {
     const paths = items.map((i) => storagePath(uid, i.kind, i.ref));
     await supabase.storage.from(BUCKET).remove(paths);
     for (const { kind, ref } of items) {
-      memUrlCache.delete(cacheKey(kind, ref));
-      memBlobCache.delete(cacheKey(kind, ref));
+      memUrlCache.delete(cacheKey(uid, kind, ref));
+      memBlobCache.delete(cacheKey(uid, kind, ref));
       await urlCacheDelete(urlKey(uid, kind, ref));
     }
   },

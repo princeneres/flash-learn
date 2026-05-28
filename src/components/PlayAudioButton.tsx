@@ -6,6 +6,8 @@ import { MediaStorageService } from '../services/MediaStorageService';
 interface Props {
   /** Filename ref stored on the card. */
   audioRef: string;
+  /** Owner uid that wrote the file — required when not the viewer. */
+  ownerId?: string;
   className?: string;
   size?: 'sm' | 'md';
   ariaLabel?: string;
@@ -15,6 +17,7 @@ interface Props {
 
 export const PlayAudioButton: React.FC<Props> = ({
   audioRef,
+  ownerId,
   className,
   size = 'md',
   ariaLabel = 'Play audio',
@@ -29,7 +32,7 @@ export const PlayAudioButton: React.FC<Props> = ({
     let cancelled = false;
     setResolved(false);
     setUrl(null);
-    MediaStorageService.getAudioUrl(audioRef)
+    MediaStorageService.getAudioUrl(audioRef, ownerId)
       .then((u) => {
         if (cancelled) return;
         setUrl(u);
@@ -44,7 +47,7 @@ export const PlayAudioButton: React.FC<Props> = ({
       audioElRef.current?.pause();
       audioElRef.current = null;
     };
-  }, [audioRef]);
+  }, [audioRef, ownerId]);
 
   const ensureAudioEl = (src: string): HTMLAudioElement => {
     if (!audioElRef.current) {
@@ -60,9 +63,34 @@ export const PlayAudioButton: React.FC<Props> = ({
 
   useEffect(() => {
     if (!autoplay || !url) return;
-    const audio = ensureAudioEl(url);
-    audio.currentTime = 0;
-    void audio.play().catch(() => setPlaying(false));
+    let cancelled = false;
+    let pendingListener: (() => void) | null = null;
+
+    const play = () => {
+      const audio = ensureAudioEl(url);
+      audio.currentTime = 0;
+      void audio.play().catch((err) => {
+        setPlaying(false);
+        if (cancelled) return;
+        if (err?.name === 'NotAllowedError' && !pendingListener) {
+          pendingListener = () => {
+            pendingListener = null;
+            if (cancelled) return;
+            play();
+          };
+          document.addEventListener('pointerdown', pendingListener, { once: true });
+        }
+      });
+    };
+    play();
+
+    return () => {
+      cancelled = true;
+      if (pendingListener) {
+        document.removeEventListener('pointerdown', pendingListener);
+        pendingListener = null;
+      }
+    };
     // intentional: re-run on url + autoplay changes only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoplay, url]);

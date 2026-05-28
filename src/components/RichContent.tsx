@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import katex from 'katex';
 import { MediaStorageService } from '../services/MediaStorageService';
 import { sanitizeRichHtml, looksLikeHtml } from '../lib/sanitize';
 import { extractHtmlMediaRefs, parseMediaSrc, type MediaRef } from '../lib/media';
@@ -6,6 +7,8 @@ import { extractHtmlMediaRefs, parseMediaSrc, type MediaRef } from '../lib/media
 interface Props {
   html: string;
   className?: string;
+  /** Owner uid for the media refs — required when content belongs to another user. */
+  ownerId?: string;
   /** When true, plays the first <audio> in the rendered content once media refs resolve. */
   autoplayFirst?: boolean;
 }
@@ -56,7 +59,7 @@ const renderResolved = (
   return root?.innerHTML ?? '';
 };
 
-export const RichContent: React.FC<Props> = ({ html, className, autoplayFirst }) => {
+export const RichContent: React.FC<Props> = ({ html, className, ownerId, autoplayFirst }) => {
   const isHtml = useMemo(() => looksLikeHtml(html), [html]);
   const normalized = useMemo(() => {
     if (!html) return '';
@@ -83,7 +86,7 @@ export const RichContent: React.FC<Props> = ({ html, className, autoplayFirst })
       const next = new Map<string, string>();
       await Promise.all(
         refs.map(async ({ ref, kind }) => {
-          const url = await MediaStorageService.getUrl(kind, ref);
+          const url = await MediaStorageService.getUrl(kind, ref, ownerId);
           if (url) next.set(`${kind}:${ref}`, url);
         })
       );
@@ -95,7 +98,7 @@ export const RichContent: React.FC<Props> = ({ html, className, autoplayFirst })
     return () => {
       cancelled = true;
     };
-  }, [refs]);
+  }, [refs, ownerId]);
 
   const finalHtml = useMemo(() => {
     const cloned = parseDoc(normalized);
@@ -105,8 +108,35 @@ export const RichContent: React.FC<Props> = ({ html, className, autoplayFirst })
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    const nodes = root.querySelectorAll<HTMLSpanElement>('span[data-tex]');
+    nodes.forEach((node) => {
+      if (node.dataset.rendered === '1') return;
+      const tex = node.getAttribute('data-tex') ?? '';
+      if (!tex) return;
+      const display = node.classList.contains('math-display');
+      try {
+        node.innerHTML = katex.renderToString(tex, {
+          displayMode: display,
+          throwOnError: false,
+          output: 'htmlAndMathml',
+          strict: 'ignore',
+        });
+      } catch {
+        node.textContent = tex;
+      }
+      node.dataset.rendered = '1';
+    });
+  }, [finalHtml]);
+
+  useEffect(() => {
     if (!autoplayFirst || !resolutionRan) return;
-    const tryPlay = () => {
+    let cancelled = false;
+    let pendingListener: (() => void) | null = null;
+    let raf = 0;
+
+    const tryPlay = (): boolean => {
       const audio = containerRef.current?.querySelector(
         'audio'
       ) as HTMLAudioElement | null;
@@ -117,16 +147,34 @@ export const RichContent: React.FC<Props> = ({ html, className, autoplayFirst })
         // ignore
       }
       void audio.play().catch((err) => {
-        console.warn('[RichContent] autoplay failed:', err?.name ?? err);
+        if (cancelled) return;
+        if (err?.name === 'NotAllowedError' && !pendingListener) {
+          pendingListener = () => {
+            pendingListener = null;
+            if (cancelled) return;
+            tryPlay();
+          };
+          document.addEventListener('pointerdown', pendingListener, { once: true });
+        } else {
+          console.warn('[RichContent] autoplay failed:', err?.name ?? err);
+        }
       });
       return true;
     };
-    if (tryPlay()) return;
-    // DOM may not be fully updated yet — retry on next frame.
-    const raf = requestAnimationFrame(() => {
-      tryPlay();
-    });
-    return () => cancelAnimationFrame(raf);
+
+    if (!tryPlay()) {
+      // DOM may not be fully updated yet — retry on next frame.
+      raf = requestAnimationFrame(() => tryPlay());
+    }
+
+    return () => {
+      cancelled = true;
+      if (raf) cancelAnimationFrame(raf);
+      if (pendingListener) {
+        document.removeEventListener('pointerdown', pendingListener);
+        pendingListener = null;
+      }
+    };
   }, [autoplayFirst, resolutionRan]);
 
   return (
