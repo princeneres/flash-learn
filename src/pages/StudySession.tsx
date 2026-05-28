@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CardService, type Card } from "../services/CardService";
 import { DeckService, type Deck } from "../services/DeckService";
+import { previewIntervalDays } from "../services/srsAlgorithm";
 import { Button } from "../components/ui/button";
 import { ArrowLeft, CheckCircle, Trophy, RotateCcw, Brain, ThumbsUp, Zap, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
@@ -18,11 +19,12 @@ const StudySession: React.FC = () => {
   const { toast } = useToast();
 
   const [deck, setDeck] = useState<Deck | null>(null);
-  const [dueCards, setDueCards] = useState<Card[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // Cards still needing a passing grade this session. A card leaves the queue
+  // only when rated Good/Easy; a lapse re-appends it so it comes back.
+  const [queue, setQueue] = useState<Card[]>([]);
+  const [initialTotal, setInitialTotal] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [sessionComplete, setSessionComplete] = useState(false);
 
   useEffect(() => {
     if (deckId) {
@@ -36,7 +38,7 @@ const StudySession: React.FC = () => {
         DeckService.getDeck(deckId!),
         CardService.getDueCards(deckId!)
       ]);
-      
+
       if (!deckData) {
         toast({ title: t('study.deckNotFound'), variant: 'destructive' });
         navigate('/');
@@ -44,7 +46,8 @@ const StudySession: React.FC = () => {
       }
 
       setDeck(deckData);
-      setDueCards(cardsData);
+      setQueue(cardsData);
+      setInitialTotal(cardsData.length);
     } catch (error) {
       console.error(error);
       toast({ title: t('study.loadError'), variant: 'destructive' });
@@ -54,26 +57,51 @@ const StudySession: React.FC = () => {
   };
 
   const handleRate = async (quality: number) => {
-    const currentCard = dueCards[currentIndex];
+    const currentCard = queue[0];
+    if (!currentCard) return;
     try {
-      await CardService.processReview(currentCard, quality);
-      
-      if (currentIndex < dueCards.length - 1) {
-        setCurrentIndex(prev => prev + 1);
-        setIsFlipped(false);
-      } else {
-        setSessionComplete(true);
-      }
+      const result = await CardService.processReview(currentCard, quality);
+      setQueue((prev) => {
+        const [, ...rest] = prev;
+        if (quality < 3) {
+          // Carry the freshly persisted SRS state so a later pass this
+          // session schedules from the right baseline.
+          const relearned: Card = {
+            ...currentCard,
+            interval: result.interval,
+            easeFactor: result.easeFactor,
+            repetitions: result.repetitions,
+            nextReview: result.nextReview.toISOString(),
+            status: 'relearning',
+          };
+          return [...rest, relearned];
+        }
+        return rest;
+      });
+      setIsFlipped(false);
     } catch (error) {
       console.error(error);
       toast({ title: t('study.saveError'), variant: 'destructive' });
     }
   };
 
+  const intervalLabel = (card: Card, quality: number): string => {
+    if (quality < 3) return t('study.intervalNow');
+    const days = previewIntervalDays(
+      quality,
+      card.interval,
+      card.easeFactor,
+      card.repetitions
+    );
+    if (days < 30) return t('study.intervalDays', { count: days });
+    if (days < 365) return t('study.intervalMonths', { count: Math.round(days / 30) });
+    return t('study.intervalYears', { count: Math.round(days / 365) });
+  };
+
   if (loading) return <LoadingState message={t('common.loading')} />;
   if (!deck) return null;
 
-  if (sessionComplete) {
+  if (initialTotal > 0 && queue.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
         <div className="relative">
@@ -99,7 +127,7 @@ const StudySession: React.FC = () => {
     );
   }
 
-  if (dueCards.length === 0) {
+  if (initialTotal === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
         <div className="relative">
@@ -119,8 +147,9 @@ const StudySession: React.FC = () => {
     );
   }
 
-  const currentCard = dueCards[currentIndex];
-  const progress = ((currentIndex) / dueCards.length) * 100;
+  const currentCard = queue[0];
+  const passed = initialTotal - queue.length;
+  const progress = initialTotal > 0 ? (passed / initialTotal) * 100 : 0;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -132,7 +161,7 @@ const StudySession: React.FC = () => {
         </Button>
         <div className="flex items-center gap-3">
           <div className="text-sm font-semibold tabular-nums text-muted-foreground">
-            {t('study.progressCounter', { current: currentIndex + 1, total: dueCards.length })}
+            {t('study.progressCounter', { current: Math.min(passed + 1, initialTotal), total: initialTotal })}
           </div>
         </div>
       </div>
@@ -164,6 +193,7 @@ const StudySession: React.FC = () => {
                 <RichContent
                   key={`front-${currentCard.id}`}
                   html={currentCard.front}
+                  ownerId={currentCard.ownerId}
                   className="rich-text text-xl sm:text-2xl font-semibold leading-relaxed"
                   autoplayFirst={!isFlipped}
                 />
@@ -171,6 +201,7 @@ const StudySession: React.FC = () => {
                   <div className="mt-4">
                     <PlayAudioButton
                       audioRef={currentCard.frontAudio}
+                      ownerId={currentCard.ownerId}
                       autoplay={!isFlipped}
                     />
                   </div>
@@ -190,6 +221,7 @@ const StudySession: React.FC = () => {
                 <RichContent
                   key={`back-${currentCard.id}`}
                   html={currentCard.back}
+                  ownerId={currentCard.ownerId}
                   className="rich-text mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed"
                   autoplayFirst={isFlipped}
                 />
@@ -197,6 +229,7 @@ const StudySession: React.FC = () => {
                   <div className="mt-4">
                     <PlayAudioButton
                       audioRef={currentCard.backAudio}
+                      ownerId={currentCard.ownerId}
                       autoplay={isFlipped}
                     />
                   </div>
@@ -218,7 +251,7 @@ const StudySession: React.FC = () => {
               <RotateCcw className="h-4 w-4 text-red-500" />
             </div>
             <span className="text-sm font-bold text-red-500">{t('study.again')}</span>
-            <span className="text-[11px] font-medium text-muted-foreground">&lt; 1m</span>
+            <span className="text-[11px] font-medium text-muted-foreground tabular-nums">{intervalLabel(currentCard, 1)}</span>
           </button>
           <button
             onClick={() => handleRate(3)}
@@ -228,7 +261,7 @@ const StudySession: React.FC = () => {
               <Brain className="h-4 w-4 text-orange-500" />
             </div>
             <span className="text-sm font-bold text-orange-500">{t('study.hard')}</span>
-            <span className="text-[11px] font-medium text-muted-foreground">2d</span>
+            <span className="text-[11px] font-medium text-muted-foreground tabular-nums">{intervalLabel(currentCard, 3)}</span>
           </button>
           <button
             onClick={() => handleRate(4)}
@@ -238,7 +271,7 @@ const StudySession: React.FC = () => {
               <ThumbsUp className="h-4 w-4 text-green-500" />
             </div>
             <span className="text-sm font-bold text-green-500">{t('study.good')}</span>
-            <span className="text-[11px] font-medium text-muted-foreground">4d</span>
+            <span className="text-[11px] font-medium text-muted-foreground tabular-nums">{intervalLabel(currentCard, 4)}</span>
           </button>
           <button
             onClick={() => handleRate(5)}
@@ -248,7 +281,7 @@ const StudySession: React.FC = () => {
               <Zap className="h-4 w-4 text-blue-500" />
             </div>
             <span className="text-sm font-bold text-blue-500">{t('study.easy')}</span>
-            <span className="text-[11px] font-medium text-muted-foreground">7d</span>
+            <span className="text-[11px] font-medium text-muted-foreground tabular-nums">{intervalLabel(currentCard, 5)}</span>
           </button>
         </div>
       )}

@@ -27,13 +27,14 @@ export const calculateReview = (
       interval = Math.round(previousInterval * previousEaseFactor);
     }
     repetitions = previousRepetitions + 1;
-    
+
     // Update ease factor
     easeFactor = previousEaseFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
   } else {
-    // Incorrect response
+    // Lapse: reset and make the card due again right away so it stays in
+    // today's queue (the session also re-shows it within the same session).
     repetitions = 0;
-    interval = 1;
+    interval = 0;
     easeFactor = previousEaseFactor;
   }
 
@@ -47,3 +48,13 @@ export const calculateReview = (
     nextReview: addDays(new Date(), interval),
   };
 };
+
+/** Projected interval in whole days for a rating, without persisting anything. */
+export const previewIntervalDays = (
+  quality: number,
+  previousInterval: number,
+  previousEaseFactor: number,
+  previousRepetitions: number
+): number =>
+  calculateReview(quality, previousInterval, previousEaseFactor, previousRepetitions)
+    .interval;
