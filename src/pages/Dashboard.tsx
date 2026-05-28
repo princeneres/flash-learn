@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { Plus, Book, Trash2, Edit2, PlayCircle, Upload, Download } from "lucide-react";
+import { Plus, Book, Trash2, Edit2, PlayCircle, Upload, Download, Sparkles } from "lucide-react";
 import { DeckService, type Deck } from "../services/DeckService";
-import { CardService, DECK_CARD_LIMIT } from "../services/CardService";
-import type { ParsedCard } from "../services/AnkiImportService";
-import type { NativeImport } from "../services/DeckImportService";
-import { collectCardMediaRefs } from "../lib/media";
+import { AiDeckDialog } from "../components/AiDeckDialog";
+import { DECK_CARD_LIMIT } from "../services/CardService";
+import type { ImportBundle } from "../services/DeckImportService";
 import { useAuth } from "../context/AuthContext";
+import { usePlan } from "../hooks/usePlan";
+import { parsePlanError, planErrorTitle } from "../lib/planErrors";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -19,9 +20,11 @@ import { Switch } from "../components/ui/switch";
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const { limits, refresh: refreshLimits } = usePlan();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAiOpen, setIsAiOpen] = useState(false);
   const [newDeckTitle, setNewDeckTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [isDeckPublic, setIsDeckPublic] = useState(false);
@@ -30,177 +33,102 @@ const Dashboard: React.FC = () => {
 
   // Import state
   const [isImportOpen, setIsImportOpen] = useState(false);
-  const [importDeckName, setImportDeckName] = useState('');
-  const [importParsed, setImportParsed] = useState<ParsedCard[] | null>(null);
-  const [importMedia, setImportMedia] = useState<Map<string, { blob: Blob; kind: 'audio' | 'image' }>>(new Map());
-  const [importNative, setImportNative] = useState<NativeImport | null>(null);
-  const [exportingAll, setExportingAll] = useState(false);
+  const [importBundle, setImportBundle] = useState<ImportBundle | null>(null);
   const [importParsing, setImportParsing] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importIsPublic, setImportIsPublic] = useState(false);
+  const [exportingAll, setExportingAll] = useState(false);
   const [audioProgress, setAudioProgress] = useState<{ done: number; total: number } | null>(null);
 
+  const maxDecks = limits?.plan.maxDecks ?? Infinity;
+  const maxTotalCards = limits?.plan.maxTotalCards ?? Infinity;
+  const maxCardsPerDeck = limits?.plan.maxCardsPerDeck ?? DECK_CARD_LIMIT;
+  const usageDecks = limits?.usage.decks ?? decks.length;
+  const usageCards = limits?.usage.totalCards ?? 0;
+  const totalRoom = Math.max(0, maxTotalCards - usageCards);
+  const atDeckLimit = usageDecks >= maxDecks;
+
+  const handlePlanError = (err: unknown, fallbackTitleKey: string): boolean => {
+    const plan = parsePlanError(err);
+    if (plan) {
+      toast({ title: planErrorTitle(plan, t), variant: 'destructive' });
+      return true;
+    }
+    toast({ title: t(fallbackTitleKey), variant: 'destructive' });
+    return false;
+  };
+
   const resetImport = () => {
-    setImportDeckName('');
-    setImportParsed(null);
-    setImportMedia(new Map());
-    setImportNative(null);
+    setImportBundle(null);
     setImportParsing(false);
     setImporting(false);
-    setImportIsPublic(false);
     setAudioProgress(null);
   };
 
   const handleImportFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setImportParsed(null);
-    setImportMedia(new Map());
-    setImportNative(null);
+    setImportBundle(null);
     setImportParsing(true);
     try {
       const { DeckImportService } = await import("../services/DeckImportService");
-      const result = await DeckImportService.parseFile(file);
-      if (result.kind === 'native') {
-        setImportNative(result);
-        const totalCards = result.decks.reduce((sum, d) => sum + d.cards.length, 0);
-        if (result.decks.length === 0 || totalCards === 0) {
-          toast({ title: t('dashboard.importEmpty'), variant: 'destructive' });
-        }
-      } else {
-        setImportParsed(result.cards);
-        setImportMedia(result.mediaBlobs);
-        if (!importDeckName.trim()) {
-          setImportDeckName(result.deckName ?? file.name.replace(/\.[^.]+$/, ''));
-        }
-        if (result.cards.length === 0) {
-          toast({ title: t('dashboard.importEmpty'), variant: 'destructive' });
-        }
+      const bundle = await DeckImportService.parseFile(file);
+      setImportBundle(bundle);
+      const totalCards = bundle.decks.reduce((s, d) => s + d.cards.length, 0);
+      if (bundle.decks.length === 0 || totalCards === 0) {
+        toast({ title: t('dashboard.importEmpty'), variant: 'destructive' });
       }
     } catch (error) {
       console.error(error);
       toast({ title: t('dashboard.importError'), variant: 'destructive' });
-      setImportParsed(null);
-      setImportNative(null);
+      setImportBundle(null);
     } finally {
       setImportParsing(false);
     }
   };
 
-  const nativeTruncated = importNative?.decks.filter(
-    (d) => d.cards.length > DECK_CARD_LIMIT
-  ) ?? [];
-  const ankiWillTruncate =
-    !importNative && !!importParsed && importParsed.length > DECK_CARD_LIMIT;
+  const totalCardsInBundle = importBundle?.decks.reduce((s, d) => s + d.cards.length, 0) ?? 0;
+  const decksOverPerDeckLimit = importBundle?.decks.filter((d) => d.cards.length > maxCardsPerDeck).length ?? 0;
+  const willExceedTotal = totalCardsInBundle > totalRoom;
 
   const handleImportConfirm = async () => {
-    if (importNative) {
-      setImporting(true);
-      try {
-        const { DeckImportService } = await import("../services/DeckImportService");
-        const { decksCreated, cardsCreated } = await DeckImportService.importNative(
-          currentUser!.id,
-          (currentUser?.user_metadata?.full_name as string | undefined) || currentUser?.email || undefined,
-          importNative,
-          (done, total) => setAudioProgress({ done, total })
-        );
-        const totalRequested = importNative.decks.reduce(
-          (s, d) => s + d.cards.length,
-          0
-        );
-        if (cardsCreated < totalRequested) {
-          toast({
-            title: t('dashboard.importNativeTruncated', {
-              decks: decksCreated,
-              cards: cardsCreated,
-              total: totalRequested,
-              limit: DECK_CARD_LIMIT,
-            }),
-          });
-        } else {
-          toast({
-            title: t('dashboard.importNativeSuccess', {
-              decks: decksCreated,
-              cards: cardsCreated,
-            }),
-          });
-        }
-        setIsImportOpen(false);
-        resetImport();
-        loadDecks();
-      } catch (error) {
-        console.error(error);
-        toast({ title: t('dashboard.importError'), variant: 'destructive' });
-      } finally {
-        setImporting(false);
-        setAudioProgress(null);
-      }
-      return;
-    }
+    if (!importBundle || importBundle.decks.length === 0) return;
 
-    if (!importParsed || importParsed.length === 0 || !importDeckName.trim()) return;
     setImporting(true);
     try {
-      const deckId = await DeckService.createDeck(currentUser!.id, {
-        title: importDeckName.trim(),
-        category: 'General',
-        tags: [],
-        isPublic: importIsPublic,
-        ownerName: (currentUser?.user_metadata?.full_name as string | undefined) || currentUser?.email || undefined,
-      });
-
-      const keptParsed = importParsed.slice(0, DECK_CARD_LIMIT);
-      const cardsForInsert = keptParsed.map((c) => ({
-        front: c.frontHtml ?? c.front,
-        back: c.backHtml ?? c.back,
-        frontAudio: c.frontAudioRef,
-        backAudio: c.backAudioRef,
-      }));
-
-      const keptRefs = new Set<string>();
-      for (const c of cardsForInsert) {
-        for (const r of collectCardMediaRefs(c)) keptRefs.add(r.ref);
-      }
-      const mediaToUpload = Array.from(importMedia).filter(([ref]) => keptRefs.has(ref));
-      if (mediaToUpload.length > 0) {
-        const { MediaStorageService } = await import("../services/MediaStorageService");
-        setAudioProgress({ done: 0, total: mediaToUpload.length });
-        let done = 0;
-        for (const [ref, { blob, kind }] of mediaToUpload) {
-          await MediaStorageService.put(kind, ref, blob);
-          done++;
-          setAudioProgress({ done, total: mediaToUpload.length });
-        }
-      }
-
-      const count = await CardService.bulkCreateCards(
+      const { DeckImportService } = await import("../services/DeckImportService");
+      const { decksCreated, cardsCreated } = await DeckImportService.importBundle(
         currentUser!.id,
-        deckId,
-        cardsForInsert
+        (currentUser?.user_metadata?.full_name as string | undefined) || currentUser?.email || undefined,
+        importBundle,
+        maxCardsPerDeck,
+        totalRoom,
+        (done, total) => setAudioProgress({ done, total })
       );
-      if (count < importParsed.length) {
+      const totalRequested = importBundle.decks.reduce((s, d) => s + d.cards.length, 0);
+      if (cardsCreated < totalRequested) {
         toast({
-          title: t('dashboard.importTruncated', {
-            title: importDeckName.trim(),
-            count,
-            total: importParsed.length,
-            limit: DECK_CARD_LIMIT,
+          title: t('dashboard.importNativeTruncated', {
+            decks: decksCreated,
+            cards: cardsCreated,
+            total: totalRequested,
+            limit: maxCardsPerDeck,
           }),
         });
       } else {
         toast({
-          title: t('dashboard.importSuccess', {
-            title: importDeckName.trim(),
-            count,
+          title: t('dashboard.importNativeSuccess', {
+            decks: decksCreated,
+            cards: cardsCreated,
           }),
         });
       }
       setIsImportOpen(false);
       resetImport();
-      loadDecks();
+      await loadDecks();
+      refreshLimits();
     } catch (error) {
       console.error(error);
-      toast({ title: t('dashboard.importError'), variant: 'destructive' });
+      handlePlanError(error, 'dashboard.importError');
     } finally {
       setImporting(false);
       setAudioProgress(null);
@@ -242,10 +170,11 @@ const Dashboard: React.FC = () => {
       setNewDeckTitle('');
       setIsDeckPublic(false);
       setIsModalOpen(false);
-      loadDecks();
+      await loadDecks();
+      refreshLimits();
     } catch (error) {
       console.error(error);
-      toast({ title: t('dashboard.createError'), variant: 'destructive' });
+      handlePlanError(error, 'dashboard.createError');
     } finally {
       setCreating(false);
     }
@@ -257,6 +186,7 @@ const Dashboard: React.FC = () => {
       await DeckService.deleteDeck(deckId);
       setDecks((prev) => prev.filter((d) => d.id !== deckId));
       toast({ title: t('dashboard.deleteSuccess') });
+      refreshLimits();
     } catch (error) {
       console.error(error);
       toast({ title: t('dashboard.deleteError'), variant: 'destructive' });
@@ -312,9 +242,19 @@ const Dashboard: React.FC = () => {
         <div>
           <p className="text-sm uppercase tracking-widest text-muted-foreground">{t('common.back')}</p>
           <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+          {limits && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {t('dashboard.planUsage', {
+                decks: usageDecks,
+                maxDecks,
+                cards: usageCards,
+                maxCards: maxTotalCards,
+              })}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+          <Button variant="outline" onClick={() => setIsImportOpen(true)} disabled={atDeckLimit}>
             <Upload className="w-5 h-5 mr-2" />
             {t('dashboard.importGeneric')}
           </Button>
@@ -322,7 +262,11 @@ const Dashboard: React.FC = () => {
             <Download className="w-5 h-5 mr-2" />
             {exportingAll ? t('dashboard.exporting') : t('dashboard.exportAll')}
           </Button>
-          <Button onClick={() => setIsModalOpen(true)} className="shadow-lg">
+          <Button variant="outline" onClick={() => setIsAiOpen(true)} disabled={atDeckLimit}>
+            <Sparkles className="w-5 h-5 mr-2" />
+            {t('ai.generate.button')}
+          </Button>
+          <Button onClick={() => setIsModalOpen(true)} className="shadow-lg" disabled={atDeckLimit}>
             <Plus className="w-5 h-5 mr-2" />
             {t('dashboard.createDeck')}
           </Button>
@@ -337,7 +281,7 @@ const Dashboard: React.FC = () => {
             <CardDescription>{t('dashboard.emptyHelper')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" onClick={() => setIsModalOpen(true)}>
+            <Button variant="outline" onClick={() => setIsModalOpen(true)} disabled={atDeckLimit}>
               {t('dashboard.createDeck')}
             </Button>
           </CardContent>
@@ -345,8 +289,8 @@ const Dashboard: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {decks.map((deck) => (
-            <Card 
-              key={deck.id} 
+            <Card
+              key={deck.id}
               className="relative overflow-hidden border-border/50 bg-gradient-to-br from-background to-card/70 transition-all hover:-translate-y-1 hover:border-primary/50"
             >
               <CardHeader className="flex flex-row items-start justify-between">
@@ -363,7 +307,7 @@ const Dashboard: React.FC = () => {
                       aria-label={t('visibility.fieldLabel')}
                     />
                   </div>
-                  <button 
+                  <button
                   type="button"
                   onClick={() => handleDeleteDeck(deck.id)}
                   className="rounded-full p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
@@ -417,7 +361,7 @@ const Dashboard: React.FC = () => {
             </p>
             <Input
               type="file"
-              accept=".apkg,.colpkg,.zip,.txt,.csv,.tsv"
+              accept=".fldeck.zip,.zip"
               onChange={handleImportFileSelect}
               disabled={importParsing || importing}
             />
@@ -435,85 +379,38 @@ const Dashboard: React.FC = () => {
               </p>
             )}
 
-            {importNative && (
+            {importBundle && (
               <>
-                <p className="text-sm text-muted-foreground">
-                  {t('dashboard.importNativeDetected')}
-                </p>
                 <p className="text-xs text-muted-foreground">
                   {t('dashboard.importNativeSummary', {
-                    decks: importNative.decks.length,
-                    cards: importNative.decks.reduce((s, d) => s + d.cards.length, 0),
-                    media: importNative.mediaBlobs.size,
+                    decks: importBundle.decks.length,
+                    cards: totalCardsInBundle,
+                    media: importBundle.mediaBlobs.size,
                   })}
                 </p>
-                {nativeTruncated.length > 0 && (
+                {decksOverPerDeckLimit > 0 && (
                   <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
                     {t('dashboard.importLimitWillTruncateNative', {
-                      count: nativeTruncated.length,
-                      limit: DECK_CARD_LIMIT,
+                      count: decksOverPerDeckLimit,
+                      limit: maxCardsPerDeck,
+                    })}
+                  </p>
+                )}
+                {willExceedTotal && (
+                  <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
+                    {t('dashboard.importLimitWillTruncate', {
+                      total: totalCardsInBundle,
+                      limit: totalRoom,
                     })}
                   </p>
                 )}
                 <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/60">
-                  {importNative.decks.slice(0, 10).map((d, i) => (
+                  {importBundle.decks.slice(0, 10).map((d, i) => (
                     <div key={i} className="flex items-center justify-between gap-2 p-2 text-xs">
                       <span className="truncate font-medium">{d.title}</span>
                       <span className="shrink-0 text-muted-foreground">
                         {t('dashboard.cardCount', { count: d.cards.length })}
                       </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {!importNative && importParsed && importParsed.length > 0 && importMedia.size > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {t('dashboard.importAudioCount', { count: importMedia.size })}
-              </p>
-            )}
-
-            {ankiWillTruncate && (
-              <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400">
-                {t('dashboard.importLimitWillTruncate', {
-                  total: importParsed?.length ?? 0,
-                  limit: DECK_CARD_LIMIT,
-                })}
-              </p>
-            )}
-
-            {!importNative && importParsed && importParsed.length > 0 && (
-              <>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium block">
-                    {t('dashboard.importDeckName')}
-                  </label>
-                  <Input
-                    value={importDeckName}
-                    onChange={(e) => setImportDeckName(e.target.value)}
-                    placeholder={t('dashboard.importDeckNamePlaceholder')}
-                    disabled={importing}
-                  />
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-muted/10 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{t('visibility.fieldLabel')}</p>
-                      <p className="text-xs text-muted-foreground">{t('visibility.fieldHint')}</p>
-                    </div>
-                    <Switch
-                      checked={importIsPublic}
-                      onCheckedChange={setImportIsPublic}
-                      disabled={importing}
-                    />
-                  </div>
-                </div>
-                <div className="max-h-40 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/60">
-                  {importParsed.slice(0, 5).map((c, i) => (
-                    <div key={i} className="grid grid-cols-2 gap-2 p-2 text-xs">
-                      <span className="truncate">{c.front}</span>
-                      <span className="truncate text-muted-foreground">{c.back}</span>
                     </div>
                   ))}
                 </div>
@@ -538,22 +435,29 @@ const Dashboard: React.FC = () => {
               disabled={
                 importing ||
                 importParsing ||
-                (importNative
-                  ? importNative.decks.length === 0
-                  : !importParsed || importParsed.length === 0 || !importDeckName.trim())
+                !importBundle ||
+                importBundle.decks.length === 0 ||
+                totalCardsInBundle === 0
               }
             >
               {importing
                 ? t('dashboard.importing')
-                : importNative
-                ? t('dashboard.importNativeConfirm', { count: importNative.decks.length })
-                : t('dashboard.importConfirm', {
-                    count: Math.min(importParsed?.length ?? 0, DECK_CARD_LIMIT),
-                  })}
+                : t('dashboard.importNativeConfirm', { count: importBundle?.decks.length ?? 0 })}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AiDeckDialog
+        open={isAiOpen}
+        onOpenChange={setIsAiOpen}
+        maxCardsPerDeck={maxCardsPerDeck}
+        totalRoom={totalRoom}
+        onCreated={() => {
+          loadDecks();
+          refreshLimits();
+        }}
+      />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent>

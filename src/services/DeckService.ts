@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { MediaStorageService } from './MediaStorageService';
 import { collectCardMediaRefs } from '../lib/media';
 import { fromDbDeck, toDbDeck } from './_mappers';
+import { parsePlanError } from '../lib/planErrors';
 
 export interface Deck {
   id: string;
@@ -25,7 +26,10 @@ export const DeckService = {
       .insert(payload)
       .select('id')
       .single();
-    if (error) throw error;
+    if (error) {
+      const plan = parsePlanError(error);
+      throw plan ?? error;
+    }
     return data.id as string;
   },
 
