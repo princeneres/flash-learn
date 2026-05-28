@@ -52,61 +52,6 @@ export interface CardLike {
   backAudio?: string | null;
 }
 
-// ============================================================
-// Storage-safe ref sanitizer (Supabase Storage rejects keys
-// containing characters outside `\w / ! - . * ' ( ) ` + space,
-// and forbids non-ASCII entirely). Anki imports preserve the
-// original filename, so we sanitize once per import and keep a
-// mapping back to the original (needed to look up the file in
-// the Anki zip's `media` index).
-// ============================================================
-
-export interface SanitizeContext {
-  originalToSafe: Map<string, string>;
-  safeToOriginal: Map<string, string>;
-}
-
-export const createSanitizeContext = (): SanitizeContext => ({
-  originalToSafe: new Map(),
-  safeToOriginal: new Map(),
-});
-
-const SAFE_CHAR_RE = /[^a-z0-9._-]+/gi;
-const COMBINING_MARKS_RE = /[̀-ͯ]/g;
-
-export const sanitizeMediaRef = (
-  original: string,
-  ctx: SanitizeContext
-): string => {
-  const cached = ctx.originalToSafe.get(original);
-  if (cached) return cached;
-
-  const nfkd = original.normalize('NFKD').replace(COMBINING_MARKS_RE, '');
-  let base = nfkd
-    .replace(SAFE_CHAR_RE, '-')
-    .replace(/-+/g, '-')
-    .replace(/^[-.]+|-+$/g, '')
-    .toLowerCase();
-  if (!base) base = 'file';
-
-  let unique = base;
-  let i = 1;
-  while (
-    ctx.safeToOriginal.has(unique) &&
-    ctx.safeToOriginal.get(unique) !== original
-  ) {
-    const dot = base.lastIndexOf('.');
-    unique =
-      dot > 0
-        ? `${base.slice(0, dot)}-${i}${base.slice(dot)}`
-        : `${base}-${i}`;
-    i++;
-  }
-  ctx.originalToSafe.set(original, unique);
-  ctx.safeToOriginal.set(unique, original);
-  return unique;
-};
-
 export const collectCardMediaRefs = (card: CardLike): MediaRef[] => {
   const refs: MediaRef[] = [];
   const seen = new Set<string>();

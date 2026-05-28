@@ -1,11 +1,6 @@
 import JSZip from 'jszip';
-import {
-  AnkiImportService,
-  type ParsedCard,
-  type MediaBlobEntry,
-} from './AnkiImportService';
 import { DeckService } from './DeckService';
-import { CardService, DECK_CARD_LIMIT } from './CardService';
+import { CardService } from './CardService';
 import { MediaStorageService, type MediaKind } from './MediaStorageService';
 import { collectCardMediaRefs } from '../lib/media';
 
@@ -14,6 +9,7 @@ export interface NativeCard {
   back: string;
   frontAudio?: string;
   backAudio?: string;
+  tags?: string[];
 }
 
 export interface NativeDeck {
@@ -24,20 +20,15 @@ export interface NativeDeck {
   cards: NativeCard[];
 }
 
-export interface NativeImport {
-  kind: 'native';
+export interface MediaBlobEntry {
+  blob: Blob;
+  kind: MediaKind;
+}
+
+export interface ImportBundle {
   decks: NativeDeck[];
   mediaBlobs: Map<string, MediaBlobEntry>;
 }
-
-export interface AnkiImport {
-  kind: 'anki';
-  deckName?: string;
-  cards: ParsedCard[];
-  mediaBlobs: Map<string, MediaBlobEntry>;
-}
-
-export type ImportResult = NativeImport | AnkiImport;
 
 const mimeFromName = (name: string): string => {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
@@ -60,24 +51,34 @@ const mimeFromName = (name: string): string => {
   }
 };
 
-const tryParseNative = async (file: File): Promise<NativeImport | null> => {
+export class UnsupportedImportError extends Error {
+  constructor() {
+    super('Not a Flash Learn deck export.');
+    this.name = 'UnsupportedImportError';
+  }
+}
+
+const parseNative = async (file: File): Promise<ImportBundle> => {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(file);
   } catch {
-    return null;
+    throw new UnsupportedImportError();
   }
+
   const manifestFile = zip.file('manifest.json');
-  if (!manifestFile) return null;
+  if (!manifestFile) throw new UnsupportedImportError();
+
   let manifest: any;
   try {
     manifest = JSON.parse(await manifestFile.async('string'));
   } catch {
-    return null;
+    throw new UnsupportedImportError();
   }
   if (manifest?.app !== 'flash-learn' || !Array.isArray(manifest.decks)) {
-    return null;
+    throw new UnsupportedImportError();
   }
+
   const decks: NativeDeck[] = manifest.decks.map((b: any) => ({
     title: String(b?.deck?.title ?? 'Untitled'),
     category: typeof b?.deck?.category === 'string' ? b.deck.category : undefined,
@@ -89,6 +90,9 @@ const tryParseNative = async (file: File): Promise<NativeImport | null> => {
           back: String(c?.back ?? ''),
           frontAudio: typeof c?.frontAudio === 'string' && c.frontAudio ? c.frontAudio : undefined,
           backAudio: typeof c?.backAudio === 'string' && c.backAudio ? c.backAudio : undefined,
+          tags: Array.isArray(c?.tags)
+            ? c.tags.filter((t: unknown) => typeof t === 'string')
+            : undefined,
         }))
       : [],
   }));
@@ -100,46 +104,32 @@ const tryParseNative = async (file: File): Promise<NativeImport | null> => {
     if (!m) continue;
     const kind = m[1] as MediaKind;
     const ref = m[2];
-    const bytes = await entry.async('uint8array');
-    const blob = new Blob([bytes], { type: mimeFromName(ref) });
+    const buffer = await entry.async('arraybuffer');
+    const blob = new Blob([buffer], { type: mimeFromName(ref) });
     mediaBlobs.set(ref, { blob, kind });
   }
 
-  return { kind: 'native', decks, mediaBlobs };
+  return { decks, mediaBlobs };
 };
 
 export const DeckImportService = {
-  parseFile: async (file: File): Promise<ImportResult> => {
-    const name = file.name.toLowerCase();
+  parseFile: (file: File): Promise<ImportBundle> => parseNative(file),
 
-    if (name.endsWith('.apkg') || name.endsWith('.colpkg')) {
-      const r = await AnkiImportService.parseFile(file);
-      return { kind: 'anki', deckName: r.deckName, cards: r.cards, mediaBlobs: r.mediaBlobs };
-    }
-
-    if (name.endsWith('.zip')) {
-      const native = await tryParseNative(file);
-      if (native) return native;
-      // Fallback: maybe it's an Anki apkg renamed .zip
-      const r = await AnkiImportService.parseFile(file);
-      return { kind: 'anki', deckName: r.deckName, cards: r.cards, mediaBlobs: r.mediaBlobs };
-    }
-
-    const r = await AnkiImportService.parseFile(file);
-    return { kind: 'anki', deckName: r.deckName, cards: r.cards, mediaBlobs: r.mediaBlobs };
-  },
-
-  importNative: async (
+  importBundle: async (
     uid: string,
     ownerName: string | undefined,
-    bundle: NativeImport,
+    bundle: ImportBundle,
+    perDeckLimit: number,
+    totalRoom: number,
     onMediaProgress?: (done: number, total: number) => void
   ): Promise<{ decksCreated: number; cardsCreated: number }> => {
-    // Truncate each deck to the limit and compute which refs survive.
-    const trimmedDecks = bundle.decks.map((d) => ({
-      ...d,
-      cards: d.cards.slice(0, DECK_CARD_LIMIT),
-    }));
+    let remaining = Math.max(0, totalRoom);
+    const trimmedDecks = bundle.decks.map((d) => {
+      const perDeck = d.cards.slice(0, Math.max(0, perDeckLimit));
+      const take = Math.min(perDeck.length, remaining);
+      remaining -= take;
+      return { ...d, cards: perDeck.slice(0, take) };
+    });
     const keptRefs = new Set<string>();
     for (const d of trimmedDecks) {
       for (const c of d.cards) {
@@ -161,6 +151,7 @@ export const DeckImportService = {
     let decksCreated = 0;
     let cardsCreated = 0;
     for (const deck of trimmedDecks) {
+      if (deck.cards.length === 0) continue;
       const deckId = await DeckService.createDeck(uid, {
         title: deck.title,
         category: deck.category ?? 'General',
@@ -169,19 +160,18 @@ export const DeckImportService = {
         ownerName,
       });
       decksCreated++;
-      if (deck.cards.length > 0) {
-        const inserted = await CardService.bulkCreateCards(
-          uid,
-          deckId,
-          deck.cards.map((c) => ({
-            front: c.front,
-            back: c.back,
-            frontAudio: c.frontAudio,
-            backAudio: c.backAudio,
-          }))
-        );
-        cardsCreated += inserted;
-      }
+      const inserted = await CardService.bulkCreateCards(
+        uid,
+        deckId,
+        deck.cards.map((c) => ({
+          front: c.front,
+          back: c.back,
+          frontAudio: c.frontAudio,
+          backAudio: c.backAudio,
+          tags: c.tags,
+        }))
+      );
+      cardsCreated += inserted;
     }
     return { decksCreated, cardsCreated };
   },
