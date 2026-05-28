@@ -4,6 +4,7 @@ import { GamificationService } from './GamificationService';
 import { MediaStorageService } from './MediaStorageService';
 import { collectCardMediaRefs } from '../lib/media';
 import { fromDbCard } from './_mappers';
+import { parsePlanError } from '../lib/planErrors';
 
 export interface Card {
   id: string;
@@ -13,6 +14,7 @@ export interface Card {
   back: string;
   frontAudio?: string;
   backAudio?: string;
+  tags: string[];
   nextReview: string;
   interval: number;
   easeFactor: number;
@@ -23,35 +25,21 @@ export interface Card {
 
 const TABLE = 'cards';
 
+// UI fallback only — backend triggers are the source of truth.
 export const DECK_CARD_LIMIT = 100;
-
-export class DeckLimitError extends Error {
-  current: number;
-  attempting: number;
-  limit: number;
-  constructor(current: number, attempting: number, limit: number) {
-    super(`Deck card limit reached (${current}+${attempting}>${limit})`);
-    this.name = 'DeckLimitError';
-    this.current = current;
-    this.attempting = attempting;
-    this.limit = limit;
-  }
-}
 
 interface BulkInput {
   front: string;
   back: string;
   frontAudio?: string;
   backAudio?: string;
+  tags?: string[];
 }
 
-const getDeckCardCount = async (deckId: string): Promise<number> => {
-  const { data } = await supabase
-    .from('decks')
-    .select('card_count')
-    .eq('id', deckId)
-    .maybeSingle();
-  return (data?.card_count as number | undefined) ?? 0;
+const rethrow = (err: unknown): never => {
+  const plan = parsePlanError(err);
+  if (plan) throw plan;
+  throw err;
 };
 
 export const CardService = {
@@ -60,10 +48,6 @@ export const CardService = {
     deckId: string,
     card: Partial<Card>
   ): Promise<string> => {
-    const current = await getDeckCardCount(deckId);
-    if (current >= DECK_CARD_LIMIT) {
-      throw new DeckLimitError(current, 1, DECK_CARD_LIMIT);
-    }
     const { data, error } = await supabase
       .from(TABLE)
       .insert({
@@ -73,11 +57,12 @@ export const CardService = {
         back: card.back ?? '',
         front_audio: card.frontAudio ?? null,
         back_audio: card.backAudio ?? null,
+        tags: card.tags ?? [],
       })
       .select('id')
       .single();
-    if (error) throw error;
-    return data.id as string;
+    if (error) rethrow(error);
+    return data!.id as string;
   },
 
   bulkCreateCards: async (
@@ -86,16 +71,10 @@ export const CardService = {
     cards: BulkInput[]
   ): Promise<number> => {
     if (cards.length === 0) return 0;
-    const current = await getDeckCardCount(deckId);
-    const room = DECK_CARD_LIMIT - current;
-    if (room <= 0) {
-      throw new DeckLimitError(current, cards.length, DECK_CARD_LIMIT);
-    }
-    const toInsert = cards.length > room ? cards.slice(0, room) : cards;
     const CHUNK = 500;
     let inserted = 0;
-    for (let i = 0; i < toInsert.length; i += CHUNK) {
-      const slice = toInsert.slice(i, i + CHUNK);
+    for (let i = 0; i < cards.length; i += CHUNK) {
+      const slice = cards.slice(i, i + CHUNK);
       const rows = slice.map((c) => ({
         deck_id: deckId,
         owner_id: ownerId,
@@ -103,9 +82,10 @@ export const CardService = {
         back: c.back,
         front_audio: c.frontAudio ?? null,
         back_audio: c.backAudio ?? null,
+        tags: c.tags ?? [],
       }));
       const { error } = await supabase.from(TABLE).insert(rows);
-      if (error) throw error;
+      if (error) rethrow(error);
       inserted += slice.length;
     }
     return inserted;
@@ -186,10 +166,7 @@ export const CardService = {
       .eq('id', card.id);
     if (error) throw error;
 
-    const points = quality >= 3 ? 10 : 1;
-    await GamificationService.awardPoints(card.ownerId, points);
-    await GamificationService.updateStreak(card.ownerId);
-    await GamificationService.checkAchievements(card.ownerId);
+    await GamificationService.recordReview(card.id, quality);
 
     return result;
   },

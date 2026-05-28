@@ -10,6 +10,7 @@ interface ExportedCard {
   back: string;
   frontAudio?: string;
   backAudio?: string;
+  tags?: string[];
 }
 
 interface DeckBundle {
@@ -63,6 +64,7 @@ const toBundle = (deck: Deck, cards: Card[]): DeckBundle => ({
     back: c.back,
     frontAudio: c.frontAudio,
     backAudio: c.backAudio,
+    tags: c.tags && c.tags.length ? c.tags : undefined,
   })),
 });
 

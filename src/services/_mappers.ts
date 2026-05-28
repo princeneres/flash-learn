@@ -21,6 +21,7 @@ interface DbCard {
   back: string;
   front_audio: string | null;
   back_audio: string | null;
+  tags: string[] | null;
   next_review: string;
   interval: number;
   ease_factor: number | string;
@@ -60,6 +61,7 @@ export const fromDbCard = (r: DbCard): Card => ({
   back: r.back,
   frontAudio: r.front_audio ?? undefined,
   backAudio: r.back_audio ?? undefined,
+  tags: r.tags ?? [],
   nextReview: r.next_review,
   interval: r.interval,
   easeFactor: typeof r.ease_factor === 'string' ? parseFloat(r.ease_factor) : r.ease_factor,
