@@ -8,6 +8,7 @@ import { LoadingState } from "../components/LoadingState";
 import { useToast } from "../components/ui/use-toast";
 import { AVAILABLE_LANGUAGES } from "../i18n";
 import { Card, CardContent } from "../components/ui/card";
+import { LlmSettings } from "../components/LlmSettings";
 
 const Profile: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -125,6 +126,8 @@ const Profile: React.FC = () => {
               </div>
               <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{t('profile.soundSoon')}</span>
             </div>
+
+            <LlmSettings />
           </div>
         </CardContent>
       </Card>
