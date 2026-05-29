@@ -30,8 +30,31 @@ interface ManifestV1 {
   decks: DeckBundle[];
 }
 
-const isAudioRef = (ref: string): boolean =>
-  /\.(mp3|ogg|wav|m4a|webm|aac|opus|flac)$/i.test(ref);
+export type ExportPhase = 'collecting' | 'media' | 'packaging';
+
+export interface ExportProgress {
+  phase: ExportPhase;
+  done: number;
+  total: number;
+}
+
+interface ExportOptions {
+  signal?: AbortSignal;
+  onProgress?: (progress: ExportProgress) => void;
+}
+
+export class ExportCancelledError extends Error {
+  constructor() {
+    super('Export cancelled');
+    this.name = 'ExportCancelledError';
+  }
+}
+
+const throwIfAborted = (signal?: AbortSignal): void => {
+  if (signal?.aborted) throw new ExportCancelledError();
+};
+
+const isAudioRef = (ref: string): boolean => /\.(mp3|ogg|wav|m4a|webm|aac|opus|flac)$/i.test(ref);
 
 const collectMediaRefs = (cards: Card[]): Map<string, MediaKind> => {
   const out = new Map<string, MediaKind>();
@@ -69,8 +92,10 @@ const toBundle = (deck: Deck, cards: Card[]): DeckBundle => ({
 });
 
 const buildZip = async (
-  bundles: Array<{ deck: Deck; cards: Card[] }>
+  bundles: Array<{ deck: Deck; cards: Card[] }>,
+  options: ExportOptions = {},
 ): Promise<Blob> => {
+  const { signal, onProgress } = options;
   const zip = new JSZip();
   const allRefs = new Map<string, MediaKind>();
   const manifest: ManifestV1 = {
@@ -85,25 +110,36 @@ const buildZip = async (
 
   zip.file('manifest.json', JSON.stringify(manifest, null, 2));
 
-  for (const [ref, kind] of allRefs) {
+  const refs = [...allRefs];
+  let mediaDone = 0;
+  onProgress?.({ phase: 'media', done: mediaDone, total: refs.length });
+  for (const [ref, kind] of refs) {
+    throwIfAborted(signal);
     const blob = await MediaStorageService.getBlob(kind, ref);
     if (blob) {
       zip.file(`media/${kind}/${ref}`, blob);
     }
+    mediaDone += 1;
+    onProgress?.({ phase: 'media', done: mediaDone, total: refs.length });
   }
 
-  return zip.generateAsync({ type: 'blob', compression: 'STORE' });
+  throwIfAborted(signal);
+  onProgress?.({ phase: 'packaging', done: 0, total: 1 });
+  const out = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
+  onProgress?.({ phase: 'packaging', done: 1, total: 1 });
+  return out;
 };
 
 const stamp = (): string => new Date().toISOString().slice(0, 10);
 
 const sanitizeFilename = (s: string): string =>
-  s.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'deck';
+  s
+    .replace(/[^a-z0-9-_]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'deck';
 
 export const DeckExportService = {
-  exportDeck: async (
-    deckId: string
-  ): Promise<{ blob: Blob; filename: string }> => {
+  exportDeck: async (deckId: string): Promise<{ blob: Blob; filename: string }> => {
     const [deck, cards] = await Promise.all([
       DeckService.getDeck(deckId),
       CardService.getDeckCards(deckId),
@@ -114,17 +150,29 @@ export const DeckExportService = {
     return { blob, filename };
   },
 
-  exportAllDecks: async (
-    uid: string
+  exportDecks: async (
+    deckIds: string[],
+    options: ExportOptions = {},
   ): Promise<{ blob: Blob; filename: string; count: number }> => {
-    const decks = await DeckService.getUserDecks(uid);
+    const { signal, onProgress } = options;
     const bundles: Array<{ deck: Deck; cards: Card[] }> = [];
-    for (const deck of decks) {
-      const cards = await CardService.getDeckCards(deck.id);
-      bundles.push({ deck, cards });
+    onProgress?.({ phase: 'collecting', done: 0, total: deckIds.length });
+    for (let i = 0; i < deckIds.length; i += 1) {
+      throwIfAborted(signal);
+      const [deck, cards] = await Promise.all([
+        DeckService.getDeck(deckIds[i]),
+        CardService.getDeckCards(deckIds[i]),
+      ]);
+      if (deck) bundles.push({ deck, cards });
+      onProgress?.({ phase: 'collecting', done: i + 1, total: deckIds.length });
     }
-    const blob = await buildZip(bundles);
-    const filename = `flash-learn-decks-${stamp()}.fldeck.zip`;
-    return { blob, filename, count: decks.length };
+
+    const blob = await buildZip(bundles, { signal, onProgress });
+    const count = bundles.length;
+    const filename =
+      count === 1
+        ? `${sanitizeFilename(bundles[0].deck.title)}-${stamp()}.fldeck.zip`
+        : `flash-learn-decks-${stamp()}.fldeck.zip`;
+    return { blob, filename, count };
   },
 };
