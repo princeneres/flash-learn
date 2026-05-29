@@ -1,7 +1,7 @@
 import type { Deck } from './DeckService';
 import type { Card } from './CardService';
 
-interface DbDeck {
+export interface DbDeck {
   id: string;
   owner_id: string;
   // Derived at read time from profiles via get_public_decks(); never stored.

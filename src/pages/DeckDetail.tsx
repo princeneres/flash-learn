@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Trash2, Search, Upload, Pencil, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Search, Upload, Pencil, Download, Star } from 'lucide-react';
 import { DeckService, type Deck } from '../services/DeckService';
+import { FavoriteService } from '../services/FavoriteService';
 import { CardService, type Card, DECK_CARD_LIMIT } from '../services/CardService';
 import type { ImportBundle, NativeCard } from '../services/DeckImportService';
 import { PlayAudioButton } from '../components/PlayAudioButton';
@@ -28,6 +29,7 @@ import { TagInput } from '../components/TagInput';
 import { normalizeCategory } from '../lib/categories';
 import { looksLikeHtml } from '../lib/sanitize';
 import { collectCardMediaRefs } from '../lib/media';
+import { cn } from '../lib/utils';
 import { Tag } from 'lucide-react';
 
 const DeckDetail: React.FC = () => {
@@ -49,6 +51,8 @@ const DeckDetail: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [exportingDeck, setExportingDeck] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoritePending, setFavoritePending] = useState(false);
   const { toast } = useToast();
 
   // Edit deck state (title + category + tags)
@@ -88,9 +92,10 @@ const DeckDetail: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [deckData, cardsData] = await Promise.all([
-        DeckService.getDeck(deckId!),
+      const [deckData, cardsData, favIds] = await Promise.all([
+        DeckService.getDeckDetail(deckId!),
         CardService.getDeckCards(deckId!),
+        FavoriteService.listFavoriteIds().catch(() => [] as string[]),
       ]);
 
       if (!deckData) {
@@ -101,6 +106,7 @@ const DeckDetail: React.FC = () => {
 
       setDeck(deckData);
       setCards(cardsData);
+      setIsFavorite(favIds.includes(deckData.id));
     } catch (error) {
       console.error(error);
       toast({ title: t('deckDetail.loadError'), variant: 'destructive' });
@@ -325,6 +331,27 @@ const DeckDetail: React.FC = () => {
     }
   };
 
+  const toggleFavorite = async () => {
+    if (!currentUser || !deck || favoritePending) return;
+    setFavoritePending(true);
+    try {
+      if (isFavorite) {
+        await FavoriteService.remove(currentUser.id, deck.id);
+        setIsFavorite(false);
+        toast({ title: t('publicDecks.unfavoriteSuccess') });
+      } else {
+        await FavoriteService.add(currentUser.id, deck.id);
+        setIsFavorite(true);
+        toast({ title: t('publicDecks.favoriteSuccess') });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: t('publicDecks.favoriteError'), variant: 'destructive' });
+    } finally {
+      setFavoritePending(false);
+    }
+  };
+
   const handleDeleteCard = async (cardId: string) => {
     if (!window.confirm(t('deckDetail.confirmDelete'))) return;
     try {
@@ -375,6 +402,13 @@ const DeckDetail: React.FC = () => {
                 </Button>
               )}
             </div>
+            {!isOwner && (
+              <p className="text-sm font-medium text-muted-foreground">
+                {t('deckDetail.byAuthor', {
+                  name: deck.ownerName || t('leaderboard.anonymous'),
+                })}
+              </p>
+            )}
             <p className="text-muted-foreground">
               {t('deckDetail.cardCountLimit', { count: cards.length, limit: maxCardsPerDeck })}
             </p>
@@ -396,6 +430,18 @@ const DeckDetail: React.FC = () => {
             )}
           </div>
         </div>
+        {!isOwner && (
+          <div className="self-start md:self-auto">
+            <Button
+              variant={isFavorite ? 'default' : 'outline'}
+              onClick={toggleFavorite}
+              disabled={favoritePending}
+            >
+              <Star className={cn('w-5 h-5 mr-2', isFavorite && 'fill-current')} aria-hidden />
+              {t(isFavorite ? 'deckDetail.unfavorite' : 'deckDetail.favorite')}
+            </Button>
+          </div>
+        )}
         {isOwner && (
           <div className="flex flex-wrap gap-2 self-start md:self-auto">
             <Button variant="outline" onClick={() => setIsImportOpen(true)}>

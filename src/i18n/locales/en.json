@@ -155,7 +155,10 @@
     "planUsage": "Decks {{decks}}/{{maxDecks}} · Cards {{cards}}/{{maxCards}}",
     "searchPlaceholder": "Search by title, category, or tag...",
     "filterAll": "All",
-    "noResults": "No decks match your search."
+    "noResults": "No decks match your search.",
+    "favoritesTitle": "Favorite decks",
+    "myDecksTitle": "My decks",
+    "removeFavorite": "Remove from favorites"
   },
   "categories": {
     "fieldLabel": "Category",
@@ -235,7 +238,10 @@
     "renameLabel": "Deck name",
     "renamePlaceholder": "e.g., English Vocabulary",
     "renameSuccess": "Deck renamed.",
-    "renameError": "Couldn't rename deck."
+    "renameError": "Couldn't rename deck.",
+    "byAuthor": "by {{name}}",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites"
   },
   "study": {
     "deckNotFound": "Deck not found.",
@@ -328,7 +334,15 @@
     "emptyState": "No public decks yet. Be the first to share!",
     "owner": "by {{name}}",
     "open": "Open deck",
-    "study": "Study deck"
+    "study": "Study deck",
+    "searchPlaceholder": "Search by title, category or tag...",
+    "filterAll": "All",
+    "noResults": "No decks match your search.",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "favoriteSuccess": "Added to favorites.",
+    "unfavoriteSuccess": "Removed from favorites.",
+    "favoriteError": "Couldn't update favorites."
   },
   "profile": {
     "languageUpdated": "Language preference saved.",

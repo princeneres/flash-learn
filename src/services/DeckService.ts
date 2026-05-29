@@ -46,6 +46,15 @@ export const DeckService = {
     return data ? fromDbDeck(data) : null;
   },
 
+  // Like getDeck, but resolves the owner's current display name (works for
+  // public decks owned by other users, where profiles RLS blocks a direct read).
+  getDeckDetail: async (deckId: string): Promise<Deck | null> => {
+    const { data, error } = await supabase.rpc('get_deck_detail', { p_deck_id: deckId });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ? fromDbDeck(row) : null;
+  },
+
   updateDeck: async (deckId: string, patch: Partial<Deck>): Promise<void> => {
     const payload: Record<string, unknown> = {};
     if (patch.title !== undefined) payload.title = patch.title;

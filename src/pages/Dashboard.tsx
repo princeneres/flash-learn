@@ -15,8 +15,10 @@ import {
   Square,
   Search,
   Tag,
+  Star,
 } from 'lucide-react';
 import { DeckService, type Deck } from '../services/DeckService';
+import { FavoriteService } from '../services/FavoriteService';
 import { AiDeckDialog } from '../components/AiDeckDialog';
 import { CategorySelect } from '../components/CategorySelect';
 import { TagInput } from '../components/TagInput';
@@ -48,6 +50,8 @@ const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
   const { limits, refresh: refreshLimits } = usePlan();
   const [decks, setDecks] = useState<Deck[]>([]);
+  const [favoriteDecks, setFavoriteDecks] = useState<Deck[]>([]);
+  const [removingFavorite, setRemovingFavorite] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -191,6 +195,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
       loadDecks();
+      loadFavorites();
     }
   }, [currentUser]);
 
@@ -203,6 +208,29 @@ const Dashboard: React.FC = () => {
       toast({ title: t('dashboard.loadError'), variant: 'destructive' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFavorites = async () => {
+    try {
+      setFavoriteDecks(await FavoriteService.getFavoriteDecks());
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleRemoveFavorite = async (deckId: string) => {
+    if (!currentUser) return;
+    setRemovingFavorite(deckId);
+    try {
+      await FavoriteService.remove(currentUser.id, deckId);
+      setFavoriteDecks((prev) => prev.filter((d) => d.id !== deckId));
+      toast({ title: t('publicDecks.unfavoriteSuccess') });
+    } catch (error) {
+      console.error(error);
+      toast({ title: t('publicDecks.favoriteError'), variant: 'destructive' });
+    } finally {
+      setRemovingFavorite(null);
     }
   };
 
@@ -392,6 +420,79 @@ const Dashboard: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {favoriteDecks.length > 0 && (
+        <section className="mb-10 space-y-4">
+          <h2 className="flex items-center gap-2 text-xl font-semibold">
+            <Star className="h-5 w-5 fill-current text-warm" aria-hidden />
+            {t('dashboard.favoritesTitle')}
+          </h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {favoriteDecks.map((deck) => {
+              const category = normalizeCategory(deck.category);
+              return (
+                <Card key={deck.id} className="border-warm/30 bg-card/80">
+                  <CardHeader className="flex flex-row items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <CardTitle className="truncate text-xl">{deck.title}</CardTitle>
+                      <CardDescription>
+                        {t('publicDecks.owner', {
+                          name: deck.ownerName || t('leaderboard.anonymous'),
+                        })}
+                      </CardDescription>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveFavorite(deck.id)}
+                      disabled={removingFavorite === deck.id}
+                      className="shrink-0 rounded-full p-2 text-warm transition hover:bg-warm/10 disabled:opacity-50"
+                      aria-label={t('dashboard.removeFavorite')}
+                    >
+                      <Star className="h-5 w-5 fill-current" aria-hidden />
+                    </button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <CardDescription>
+                      {t('dashboard.cardCount', { count: deck.cardCount })}
+                    </CardDescription>
+                    {(category || deck.tags.length > 0) && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {category && <Badge variant="warm">{category}</Badge>}
+                        {deck.tags.slice(0, 3).map((tag) => (
+                          <Badge key={tag} variant="secondary">
+                            <Tag className="h-3 w-3" aria-hidden />
+                            {tag}
+                          </Badge>
+                        ))}
+                        {deck.tags.length > 3 && (
+                          <Badge variant="outline">+{deck.tags.length - 3}</Badge>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex gap-3">
+                      <Link to={`/deck/${deck.id}`} className="flex-1">
+                        <Button variant="outline" className="w-full">
+                          {t('publicDecks.open')}
+                        </Button>
+                      </Link>
+                      <Link to={`/study/${deck.id}`} className="flex-1">
+                        <Button className="w-full">
+                          <PlayCircle className="w-4 h-4 mr-2" />
+                          {t('dashboard.study')}
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {favoriteDecks.length > 0 && (
+        <h2 className="mb-4 text-xl font-semibold">{t('dashboard.myDecksTitle')}</h2>
+      )}
 
       {decks.length === 0 ? (
         <Card className="glass-panel text-center py-12 border-dashed">
