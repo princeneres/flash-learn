@@ -1,648 +1,610 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
-    ArrowRight,
-    Brain,
-    Check,
-    Globe2,
-    Layers,
-    LockKeyhole,
-    Play,
-    Quote,
-    Sparkles,
-    Star,
-    Target,
-    Trophy,
-    Users,
-    Zap,
-} from "lucide-react";
-import { Button } from "../components/ui/button";
-import { ThemeToggle } from "../components/ThemeToggle";
-import { LanguageSwitcher } from "../components/LanguageSwitcher";
+  ArrowRight,
+  BadgeCheck,
+  Brain,
+  Check,
+  Flame,
+  GraduationCap,
+  KeyRound,
+  Languages,
+  LineChart,
+  Pencil,
+  Repeat,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Stethoscope,
+  Users,
+  Wand2,
+  WifiOff,
+} from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const useReveal = () => {
-    const ref = useRef<HTMLElement | null>(null);
-    const [visible, setVisible] = useState(false);
-    useEffect(() => {
-        const node = ref.current;
-        if (!node) return;
-        const obs = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setVisible(true);
-                    obs.disconnect();
-                }
-            },
-            { threshold: 0.15 }
-        );
-        obs.observe(node);
-        return () => obs.disconnect();
-    }, []);
-    return { ref, visible };
+  const ref = useRef<HTMLElement | null>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' },
+    );
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, visible };
 };
 
 const Reveal: React.FC<{
-    children: React.ReactNode;
-    delay?: number;
-    className?: string;
-}> = ({ children, delay = 0, className = "" }) => {
-    const { ref, visible } = useReveal();
-    return (
-        <div
-            ref={ref as React.RefObject<HTMLDivElement>}
-            style={{ animationDelay: `${delay}ms` }}
-            className={`${
-                visible ? "animate-fade-up" : "opacity-0"
-            } ${className}`}
-        >
-            {children}
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}> = ({ children, delay = 0, className = '' }) => {
+  const { ref, visible } = useReveal();
+  const reduced = useMemo(() => prefersReducedMotion(), []);
+
+  if (reduced) {
+    return <div className={className}>{children}</div>;
+  }
+
+  return (
+    <div
+      ref={ref as React.RefObject<HTMLDivElement>}
+      style={{ animationDelay: `${delay}ms` }}
+      className={`${visible ? 'animate-fade-up' : 'opacity-0'} ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+/* ── Brand wordmark ──────────────────────────────────────────────── */
+const Wordmark: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <span className={`flex items-center gap-2.5 ${className}`}>
+    <img src="/logo.png" alt="" aria-hidden className="h-7 w-7 rounded-[7px] shadow-sm" />
+    <span translate="no" className="text-[15px] font-semibold tracking-tight text-foreground">
+      Flash Learn
+    </span>
+  </span>
+);
+
+/* ── Hero product mockup: a realistic study session window ───────── */
+const StudyMockup: React.FC = () => {
+  const { t } = useTranslation();
+  const [revealed, setRevealed] = useState(false);
+
+  const ratings = [
+    { key: 'demoAgain', cls: 'text-rose-300 ring-rose-400/30 hover:bg-rose-400/10' },
+    { key: 'demoHard', cls: 'text-amber-300 ring-amber-400/30 hover:bg-amber-400/10' },
+    { key: 'demoGood', cls: 'text-emerald-300 ring-emerald-400/30 hover:bg-emerald-400/10' },
+    { key: 'demoEasy', cls: 'text-sky-300 ring-sky-400/30 hover:bg-sky-400/10' },
+  ];
+
+  return (
+    <div className="relative w-full max-w-md">
+      {/* soft brand halo behind the window */}
+      <div aria-hidden className="absolute -inset-6 -z-10 rounded-[2rem] bg-primary/10 blur-2xl" />
+      <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900 text-slate-100 shadow-elegant">
+        {/* window chrome */}
+        <div className="flex items-center gap-2 border-b border-slate-700/60 px-4 py-3">
+          <span className="flex gap-1.5" aria-hidden>
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-600" />
+          </span>
+          <span className="ml-1 truncate text-xs font-medium text-slate-400">
+            {t('landing.demoDeck')}
+          </span>
+          <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-inset ring-amber-400/20">
+            <Flame className="h-3 w-3" />
+            {t('landing.demoStreak')}
+          </span>
         </div>
-    );
+
+        {/* body */}
+        <div className="space-y-4 p-5">
+          <div className="flex items-center justify-between text-xs text-slate-400">
+            <span>{t('landing.demoProgress')}</span>
+            <span className="tabular-nums">30%</span>
+          </div>
+          <div
+            className="h-1.5 w-full overflow-hidden rounded-full bg-slate-700/70"
+            role="progressbar"
+            aria-valuenow={30}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div className="h-full w-[30%] rounded-full bg-primary" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            aria-pressed={revealed}
+            className="group flex min-h-[9.5rem] w-full flex-col items-center justify-center rounded-xl border border-slate-700/60 bg-slate-800/50 px-5 py-6 text-center transition-colors hover:border-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+          >
+            <span className="text-[15px] font-medium leading-snug text-slate-100">
+              {t('landing.demoFront')}
+            </span>
+            <span
+              className={`mt-3 text-2xl font-semibold tracking-tight text-primary transition-all duration-300 ${
+                revealed ? 'opacity-100' : 'select-none opacity-0 blur-sm'
+              }`}
+            >
+              {t('landing.demoBack')}
+            </span>
+            {!revealed && (
+              <span className="mt-3 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                {t('landing.demoHint')}
+              </span>
+            )}
+          </button>
+
+          <div
+            className={`grid grid-cols-4 gap-2 transition-opacity duration-300 ${
+              revealed ? 'opacity-100' : 'pointer-events-none opacity-40'
+            }`}
+          >
+            {ratings.map(({ key, cls }) => (
+              <span
+                key={key}
+                className={`rounded-lg py-2 text-center text-xs font-medium ring-1 ring-inset transition-colors ${cls}`}
+              >
+                {t(`landing.${key}`)}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── AI section mockup: the deck generator ──────────────────────── */
+const AiMockup: React.FC = () => {
+  const { t } = useTranslation();
+  const cards = [
+    { f: t('landing.aiMockCard1Front'), b: t('landing.aiMockCard1Back') },
+    { f: t('landing.aiMockCard2Front'), b: t('landing.aiMockCard2Back') },
+  ];
+  return (
+    <div className="relative w-full max-w-md">
+      <div aria-hidden className="absolute -inset-6 -z-10 rounded-[2rem] bg-primary/10 blur-2xl" />
+      <div className="overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900 text-slate-100 shadow-elegant">
+        <div className="flex items-center gap-2 border-b border-slate-700/60 px-4 py-3">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-xs font-medium text-slate-300">{t('landing.aiTitleShort')}</span>
+        </div>
+        <div className="space-y-4 p-5">
+          <div className="space-y-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              {t('landing.aiMockTopic')}
+            </span>
+            <div className="rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2.5 text-sm text-slate-200">
+              {t('landing.aiMockTopicValue')}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-[11px]">
+            {[t('landing.aiMockCount'), t('landing.aiMockLevel'), t('landing.aiMockLang')].map(
+              (chip) => (
+                <span
+                  key={chip}
+                  className="rounded-full bg-slate-800 px-2.5 py-1 font-medium text-slate-300 ring-1 ring-inset ring-slate-700"
+                >
+                  {chip}
+                </span>
+              ),
+            )}
+            <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 font-medium text-primary-foreground">
+              <Wand2 className="h-3 w-3" />
+              {t('landing.aiMockGenerate')}
+            </span>
+          </div>
+          <div className="space-y-2 border-t border-slate-700/60 pt-3">
+            {cards.map((c, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 text-sm"
+              >
+                <span className="text-slate-300">{c.f}</span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+                <span className="font-medium text-primary">{c.b}</span>
+                <Check className="ml-auto h-4 w-4 shrink-0 text-emerald-400" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const Landing: React.FC = () => {
-    const { t } = useTranslation();
-    const navigate = useNavigate();
-    const [flipped, setFlipped] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
-    const currentYear = new Date().getFullYear();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
+  const currentYear = new Date().getFullYear();
 
-    useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 12);
-        onScroll();
-        window.addEventListener("scroll", onScroll, { passive: true });
-        return () => window.removeEventListener("scroll", onScroll);
-    }, []);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
-    const goLogin = () => navigate("/login");
+  const goLogin = () => navigate('/login');
 
-    const features = [
-        {
-            icon: Brain,
-            title: t("landing.feat1Title"),
-            body: t("landing.feat1Body"),
-            tone: "from-blue-500/20 to-cyan-500/20",
-        },
-        {
-            icon: Users,
-            title: t("landing.feat2Title"),
-            body: t("landing.feat2Body"),
-            tone: "from-violet-500/20 to-fuchsia-500/20",
-        },
-        {
-            icon: Trophy,
-            title: t("landing.feat3Title"),
-            body: t("landing.feat3Body"),
-            tone: "from-amber-500/20 to-rose-500/20",
-        },
-        {
-            icon: Target,
-            title: t("landing.feat4Title"),
-            body: t("landing.feat4Body"),
-            tone: "from-emerald-500/20 to-teal-500/20",
-        },
-        {
-            icon: LockKeyhole,
-            title: t("landing.feat5Title"),
-            body: t("landing.feat5Body"),
-            tone: "from-slate-500/20 to-blue-500/20",
-        },
-        {
-            icon: Globe2,
-            title: t("landing.feat6Title"),
-            body: t("landing.feat6Body"),
-            tone: "from-pink-500/20 to-orange-500/20",
-        },
-    ];
+  const capabilities = [
+    { icon: Brain, value: t('landing.cap1Value'), label: t('landing.cap1Label') },
+    { icon: WifiOff, value: t('landing.cap2Value'), label: t('landing.cap2Label') },
+    { icon: KeyRound, value: t('landing.cap3Value'), label: t('landing.cap3Label') },
+    { icon: BadgeCheck, value: t('landing.cap4Value'), label: t('landing.cap4Label') },
+  ];
 
-    const metrics = [
-        {
-            label: t("landing.metric1Label"),
-            value: t("landing.metric1Value"),
-            icon: Layers,
-        },
-        {
-            label: t("landing.metric2Label"),
-            value: t("landing.metric2Value"),
-            icon: Users,
-        },
-        {
-            label: t("landing.metric3Label"),
-            value: t("landing.metric3Value"),
-            icon: Brain,
-        },
-        {
-            label: t("landing.metric4Label"),
-            value: t("landing.metric4Value"),
-            icon: Star,
-        },
-    ];
+  const features = [
+    { icon: Repeat, title: t('landing.feat1Title'), body: t('landing.feat1Body') },
+    { icon: Users, title: t('landing.feat2Title'), body: t('landing.feat2Body') },
+    { icon: Flame, title: t('landing.feat3Title'), body: t('landing.feat3Body') },
+    { icon: Brain, title: t('landing.feat4Title'), body: t('landing.feat4Body') },
+    { icon: ShieldCheck, title: t('landing.feat5Title'), body: t('landing.feat5Body') },
+    { icon: Smartphone, title: t('landing.feat6Title'), body: t('landing.feat6Body') },
+  ];
 
-    const steps = [
-        {
-            title: t("landing.step1Title"),
-            body: t("landing.step1Body"),
-            icon: Layers,
-        },
-        {
-            title: t("landing.step2Title"),
-            body: t("landing.step2Body"),
-            icon: Brain,
-        },
-        {
-            title: t("landing.step3Title"),
-            body: t("landing.step3Body"),
-            icon: Trophy,
-        },
-    ];
+  const steps = [
+    { title: t('landing.step1Title'), body: t('landing.step1Body') },
+    { title: t('landing.step2Title'), body: t('landing.step2Body') },
+    { title: t('landing.step3Title'), body: t('landing.step3Body') },
+  ];
 
-    const testimonials = [
-        {
-            text: t("landing.testimonial1"),
-            name: t("landing.testimonial1Name"),
-            role: t("landing.testimonial1Role"),
-        },
-        {
-            text: t("landing.testimonial2"),
-            name: t("landing.testimonial2Name"),
-            role: t("landing.testimonial2Role"),
-        },
-        {
-            text: t("landing.testimonial3"),
-            name: t("landing.testimonial3Name"),
-            role: t("landing.testimonial3Role"),
-        },
-    ];
+  const aiPoints = [
+    { icon: Wand2, title: t('landing.aiPoint1Title'), body: t('landing.aiPoint1Body') },
+    { icon: Pencil, title: t('landing.aiPoint2Title'), body: t('landing.aiPoint2Body') },
+    { icon: KeyRound, title: t('landing.aiPoint3Title'), body: t('landing.aiPoint3Body') },
+  ];
 
-    return (
-        <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
-            <div className="pointer-events-none fixed inset-0 -z-10 bg-mesh" />
-            <div className="pointer-events-none fixed inset-0 -z-10 grid-pattern opacity-70" />
-            <div
-                aria-hidden
-                className="pointer-events-none fixed -top-40 -left-40 -z-10 h-[420px] w-[420px] rounded-full bg-blue-500/30 blur-3xl animate-float-slow"
-            />
-            <div
-                aria-hidden
-                className="pointer-events-none fixed -bottom-40 -right-40 -z-10 h-[480px] w-[480px] rounded-full bg-fuchsia-500/25 blur-3xl animate-float-slow"
-                style={{ animationDelay: "3s" }}
-            />
+  const useCases = [
+    { icon: Languages, title: t('landing.useCase1Title'), body: t('landing.useCase1Body') },
+    { icon: Stethoscope, title: t('landing.useCase2Title'), body: t('landing.useCase2Body') },
+    { icon: GraduationCap, title: t('landing.useCase3Title'), body: t('landing.useCase3Body') },
+    { icon: LineChart, title: t('landing.useCase4Title'), body: t('landing.useCase4Body') },
+  ];
 
-            <header
-                className={`sticky top-0 z-50 transition-all duration-300 ${
-                    scrolled
-                        ? "border-b border-border/60 bg-background/80 backdrop-blur-xl shadow-sm"
-                        : "border-b border-transparent"
-                }`}
-            >
-                <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
-                    <Link to="/" className="flex items-center gap-2">
-                        <img
-                            src="/logo.png"
-                            alt="Flash Learn"
-                            className="h-8 w-8 transition-transform hover:rotate-12"
-                        />
-                        <span className="text-base font-semibold tracking-tight">
-                            Flash Learn
-                        </span>
-                    </Link>
-                    <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground md:flex">
-                        <a
-                            href="#features"
-                            className="rounded-full px-3 py-1.5 transition hover:bg-accent hover:text-accent-foreground"
-                        >
-                            {t("landing.navFeatures")}
-                        </a>
-                        <a
-                            href="#how"
-                            className="rounded-full px-3 py-1.5 transition hover:bg-accent hover:text-accent-foreground"
-                        >
-                            {t("landing.navHow")}
-                        </a>
-                        <a
-                            href="#testimonials"
-                            className="rounded-full px-3 py-1.5 transition hover:bg-accent hover:text-accent-foreground"
-                        >
-                            {t("landing.navTestimonials")}
-                        </a>
-                    </nav>
-                    <div className="flex items-center gap-2">
-                        <div className="hidden md:block">
-                            <LanguageSwitcher />
-                        </div>
-                        <ThemeToggle />
-                        <Button
-                            onClick={goLogin}
-                            size="sm"
-                            className="group relative gap-1.5 overflow-hidden"
-                        >
-                            <span className="relative z-10">
-                                {t("landing.signIn")}
-                            </span>
-                            <ArrowRight className="relative z-10 h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                        </Button>
-                    </div>
-                </div>
-            </header>
+  const navLinks = [
+    { href: '#features', label: t('landing.navFeatures') },
+    { href: '#how', label: t('landing.navHow') },
+    { href: '#ai', label: t('landing.navAi') },
+    { href: '#use-cases', label: t('landing.navUseCases') },
+  ];
 
-            <section className="relative mx-auto w-full max-w-6xl px-4 pb-20 pt-12 sm:pt-20">
-                <div className="grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
-                    <div className="text-center lg:text-left">
-                        <Reveal>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/70 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground backdrop-blur">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-primary" />
-                                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                                </span>
-                                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                {t("landing.badge")}
-                            </span>
-                        </Reveal>
+  return (
+    <div className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-mesh" />
+      <div className="pointer-events-none fixed inset-0 -z-10 grid-pattern" />
 
-                        <Reveal delay={120}>
-                            <h1 className="mt-6 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-                                <span className="block">
-                                    {t("landing.heroTitleA")}
-                                </span>
-                                <span className="block text-gradient-primary animate-gradient-x">
-                                    {t("landing.heroTitleB")}
-                                </span>
-                            </h1>
-                        </Reveal>
-
-                        <Reveal delay={220}>
-                            <p className="mx-auto mt-6 max-w-xl text-base text-muted-foreground sm:text-lg lg:mx-0">
-                                {t("landing.heroSubtitle")}
-                            </p>
-                        </Reveal>
-
-                        <Reveal delay={320}>
-                            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:gap-4 lg:items-start lg:justify-start">
-                                <Button
-                                    onClick={goLogin}
-                                    size="lg"
-                                    className="group relative h-12 w-full overflow-hidden px-8 text-base font-semibold shadow-lg shadow-primary/30 transition-all hover:shadow-xl hover:shadow-primary/40 sm:w-auto"
-                                >
-                                    <span
-                                        aria-hidden
-                                        className="absolute inset-0 bg-[linear-gradient(110deg,transparent_30%,rgba(255,255,255,0.35)_50%,transparent_70%)] bg-[length:200%_100%] animate-shimmer"
-                                    />
-                                    <span className="relative z-10 flex items-center gap-2">
-                                        {t("landing.ctaPrimary")}
-                                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                                    </span>
-                                </Button>
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    size="lg"
-                                    className="h-12 w-full gap-2 px-6 text-base sm:w-auto"
-                                >
-                                    <a href="#how">
-                                        <Play className="h-4 w-4" />
-                                        {t("landing.ctaSecondary")}
-                                    </a>
-                                </Button>
-                            </div>
-                        </Reveal>
-
-                        <Reveal delay={420}>
-                            <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground lg:justify-start">
-                                {[
-                                    t("landing.trust1"),
-                                    t("landing.trust2"),
-                                    t("landing.trust3"),
-                                ].map((item) => (
-                                    <li
-                                        key={item}
-                                        className="flex items-center gap-1.5"
-                                    >
-                                        <Check className="h-4 w-4 text-primary" />
-                                        {item}
-                                    </li>
-                                ))}
-                            </ul>
-                        </Reveal>
-                    </div>
-
-                    <Reveal delay={200} className="flex justify-center">
-                        <div className="relative">
-                            <div
-                                aria-hidden
-                                className="absolute -inset-8 -z-10 rounded-full bg-gradient-to-br from-primary/30 via-fuchsia-500/20 to-cyan-500/20 blur-3xl animate-float"
-                            />
-
-                            <div className="perspective-1000">
-                                <button
-                                    type="button"
-                                    onClick={() => setFlipped((v) => !v)}
-                                    aria-label={t("landing.demoHint")}
-                                    className="group relative h-72 w-72 cursor-pointer transition-transform duration-700 transform-style-3d sm:h-80 sm:w-80 hover:scale-[1.03]"
-                                    style={{
-                                        transform: flipped
-                                            ? "rotateY(180deg)"
-                                            : "rotateY(0deg)",
-                                        transformStyle: "preserve-3d",
-                                    }}
-                                >
-                                    <div
-                                        className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card/90 p-8 text-center shadow-2xl backface-hidden card-shadow"
-                                        style={{ backfaceVisibility: "hidden" }}
-                                    >
-                                        <Sparkles className="mb-4 h-8 w-8 text-primary" />
-                                        <p className="text-xl font-semibold leading-snug">
-                                            {t("landing.demoFront")}
-                                        </p>
-                                        <span className="mt-6 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                                            {t("landing.demoHint")}
-                                        </span>
-                                    </div>
-                                    <div
-                                        className="absolute inset-0 flex flex-col items-center justify-center rounded-3xl border border-primary/40 bg-gradient-to-br from-primary/90 to-fuchsia-600/90 p-8 text-center text-primary-foreground shadow-2xl rotate-y-180 backface-hidden"
-                                        style={{
-                                            backfaceVisibility: "hidden",
-                                            transform: "rotateY(180deg)",
-                                        }}
-                                    >
-                                        <Trophy className="mb-4 h-8 w-8" />
-                                        <p className="text-3xl font-bold leading-tight">
-                                            {t("landing.demoBack")}
-                                        </p>
-                                        <span className="mt-6 text-xs uppercase tracking-[0.3em] opacity-80">
-                                            +10 XP
-                                        </span>
-                                    </div>
-                                </button>
-                            </div>
-
-                            <div
-                                aria-hidden
-                                className="absolute -right-6 -top-6 hidden animate-float rounded-2xl border border-border/60 bg-card/95 px-4 py-3 shadow-xl backdrop-blur sm:block"
-                                style={{ animationDelay: "1.5s" }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Zap className="h-4 w-4 text-amber-500" />
-                                    <div>
-                                        <p className="text-xs font-semibold">
-                                            +24 XP
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            Streak 14d
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div
-                                aria-hidden
-                                className="absolute -bottom-4 -left-8 hidden animate-float rounded-2xl border border-border/60 bg-card/95 px-4 py-3 shadow-xl backdrop-blur sm:block"
-                                style={{ animationDelay: "0.8s" }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Brain className="h-4 w-4 text-violet-500" />
-                                    <div>
-                                        <p className="text-xs font-semibold">
-                                            94% retention
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            Adaptive AI
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Reveal>
-                </div>
-
-                <Reveal delay={500}>
-                    <div className="mt-20 grid grid-cols-2 gap-3 rounded-3xl border border-border/60 bg-card/50 p-4 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
-                        {metrics.map(({ icon: Icon, label, value }) => (
-                            <div
-                                key={label}
-                                className="group relative flex flex-col items-center gap-1 rounded-2xl px-4 py-3 text-center transition hover:bg-accent/40"
-                            >
-                                <Icon className="h-5 w-5 text-primary transition-transform group-hover:scale-110" />
-                                <p className="text-2xl font-bold tracking-tight md:text-3xl">
-                                    {value}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {label}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </Reveal>
-            </section>
-
-            <section
-                id="features"
-                className="relative mx-auto w-full max-w-6xl px-4 py-24"
-            >
-                <Reveal>
-                    <div className="text-center">
-                        <span className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-                            {t("landing.navFeatures")}
-                        </span>
-                        <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                            {t("landing.featuresTitle")}
-                        </h2>
-                        <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                            {t("landing.featuresSubtitle")}
-                        </p>
-                    </div>
-                </Reveal>
-
-                <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                    {features.map(({ icon: Icon, title, body, tone }, i) => (
-                        <Reveal key={title} delay={i * 80}>
-                            <div className="group relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10">
-                                <div
-                                    aria-hidden
-                                    className={`absolute -right-12 -top-12 h-40 w-40 rounded-full bg-gradient-to-br ${tone} opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100`}
-                                />
-                                <div className="relative">
-                                    <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-110 group-hover:rotate-3">
-                                        <Icon className="h-5 w-5" />
-                                    </div>
-                                    <h3 className="mt-5 text-lg font-semibold">
-                                        {title}
-                                    </h3>
-                                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                                        {body}
-                                    </p>
-                                </div>
-                            </div>
-                        </Reveal>
-                    ))}
-                </div>
-            </section>
-
-            <section
-                id="how"
-                className="relative mx-auto w-full max-w-6xl px-4 py-24"
-            >
-                <Reveal>
-                    <div className="text-center">
-                        <span className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-                            {t("landing.navHow")}
-                        </span>
-                        <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                            {t("landing.howTitle")}
-                        </h2>
-                        <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                            {t("landing.howSubtitle")}
-                        </p>
-                    </div>
-                </Reveal>
-
-                <div className="relative mt-14 grid gap-6 md:grid-cols-3">
-                    <div
-                        aria-hidden
-                        className="absolute left-0 right-0 top-12 hidden h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent md:block"
-                    />
-                    {steps.map(({ title, body, icon: Icon }, i) => (
-                        <Reveal key={title} delay={i * 120}>
-                            <div className="group relative h-full rounded-3xl border border-border/60 bg-card/70 p-6 text-center backdrop-blur transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl">
-                                <div className="relative mx-auto inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-fuchsia-600 text-primary-foreground shadow-lg shadow-primary/30 transition-transform group-hover:scale-110">
-                                    <Icon className="h-6 w-6" />
-                                    <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background text-xs font-bold text-primary">
-                                        {i + 1}
-                                    </span>
-                                </div>
-                                <h3 className="mt-5 text-lg font-semibold">
-                                    {title}
-                                </h3>
-                                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                                    {body}
-                                </p>
-                            </div>
-                        </Reveal>
-                    ))}
-                </div>
-            </section>
-
-            <section
-                id="testimonials"
-                className="relative mx-auto w-full max-w-6xl px-4 py-24"
-            >
-                <Reveal>
-                    <div className="text-center">
-                        <span className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-                            {t("landing.navTestimonials")}
-                        </span>
-                        <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                            {t("landing.testimonialsTitle")}
-                        </h2>
-                        <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                            {t("landing.testimonialsSubtitle")}
-                        </p>
-                    </div>
-                </Reveal>
-
-                <div className="mt-14 grid gap-6 md:grid-cols-3">
-                    {testimonials.map(({ text, name, role }, i) => (
-                        <Reveal key={name} delay={i * 100}>
-                            <figure className="group relative h-full overflow-hidden rounded-3xl border border-border/60 bg-card/70 p-6 backdrop-blur transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl">
-                                <Quote className="h-8 w-8 text-primary/30 transition-colors group-hover:text-primary/60" />
-                                <blockquote className="mt-3 text-sm leading-relaxed text-foreground">
-                                    {text}
-                                </blockquote>
-                                <figcaption className="mt-6 flex items-center gap-3 border-t border-border/40 pt-4">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-fuchsia-600 text-sm font-bold text-primary-foreground">
-                                        {name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-semibold">
-                                            {name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {role}
-                                        </p>
-                                    </div>
-                                    <div className="ml-auto flex gap-0.5 text-amber-400">
-                                        {[...Array(5)].map((_, j) => (
-                                            <Star
-                                                key={j}
-                                                className="h-3.5 w-3.5 fill-current"
-                                            />
-                                        ))}
-                                    </div>
-                                </figcaption>
-                            </figure>
-                        </Reveal>
-                    ))}
-                </div>
-            </section>
-
-            <section className="relative mx-auto w-full max-w-6xl px-4 pb-24 pt-8">
-                <Reveal>
-                    <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary via-violet-600 to-fuchsia-600 p-10 text-center text-primary-foreground shadow-2xl shadow-primary/30 sm:p-14">
-                        <div
-                            aria-hidden
-                            className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.18),transparent_50%)]"
-                        />
-                        <div
-                            aria-hidden
-                            className="absolute -top-20 left-1/2 h-60 w-60 -translate-x-1/2 rounded-full bg-white/20 blur-3xl animate-float"
-                        />
-                        <div className="relative">
-                            <span className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-1 text-xs font-medium uppercase tracking-[0.2em] backdrop-blur">
-                                <Sparkles className="h-3.5 w-3.5" />
-                                {t("landing.finalCtaEyebrow")}
-                            </span>
-                            <h2 className="mx-auto mt-5 max-w-3xl text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                                {t("landing.finalCtaTitle")}
-                            </h2>
-                            <p className="mx-auto mt-4 max-w-2xl text-base opacity-90 sm:text-lg">
-                                {t("landing.finalCtaSubtitle")}
-                            </p>
-                            <div className="mt-8 flex justify-center">
-                                <Button
-                                    onClick={goLogin}
-                                    size="lg"
-                                    variant="secondary"
-                                    className="group h-12 gap-2 bg-white px-8 text-base font-semibold text-primary shadow-xl hover:bg-white/95 hover:scale-[1.02] transition-transform"
-                                >
-                                    {t("landing.finalCtaButton")}
-                                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </Reveal>
-            </section>
-
-            <footer className="border-t border-border/60 bg-background/60 backdrop-blur">
-                <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row">
-                    <div className="flex items-center gap-2">
-                        <img
-                            src="/logo.png"
-                            alt="Flash Learn"
-                            className="h-6 w-6"
-                        />
-                        <span className="font-medium text-foreground">
-                            Flash Learn
-                        </span>
-                        <span className="hidden sm:inline">
-                            {t("landing.footerTagline")}
-                        </span>
-                    </div>
-                    <p className="text-center sm:text-right">
-                        © {currentYear} Flash Learn ·{" "}
-                        {t("landing.footerRights")} ·{" "}
-                        <a
-                            href="https://github.com/princeneres"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                            Prince Neres
-                        </a>
-                    </p>
-                </div>
-            </footer>
+      {/* ── Header ───────────────────────────────────────────── */}
+      <header
+        className={`sticky top-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? 'border-b border-border/60 bg-background/80 shadow-sm backdrop-blur-xl'
+            : 'border-b border-transparent'
+        }`}
+      >
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+          <Link
+            to="/"
+            className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Wordmark />
+          </Link>
+          <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground md:flex">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="rounded-full px-3 py-1.5 transition-colors hover:bg-accent hover:text-foreground"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
+            </div>
+            <ThemeToggle />
+            <Button onClick={goLogin} size="sm" className="group gap-1.5">
+              {t('landing.signIn')}
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Button>
+          </div>
         </div>
-    );
+      </header>
+
+      {/* ── Hero ─────────────────────────────────────────────── */}
+      <section className="relative mx-auto w-full max-w-6xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20 lg:pb-24">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+          <div className="text-center lg:text-left">
+            <Reveal>
+              <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3.5 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                {t('landing.badge')}
+              </span>
+            </Reveal>
+
+            <Reveal delay={80}>
+              <h1 className="mt-6 text-balance text-[2.75rem] font-bold leading-[1.04] tracking-[-0.02em] sm:text-6xl">
+                {t('landing.heroTitleA')}
+                <br />
+                <span className="text-primary">{t('landing.heroTitleB')}</span>
+              </h1>
+            </Reveal>
+
+            <Reveal delay={160}>
+              <p className="mx-auto mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg lg:mx-0">
+                {t('landing.heroSubtitle')}
+              </p>
+            </Reveal>
+
+            <Reveal delay={240}>
+              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:gap-3 lg:justify-start">
+                <Button
+                  onClick={goLogin}
+                  size="lg"
+                  className="group h-12 w-full gap-2 px-7 text-base font-semibold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 sm:w-auto"
+                >
+                  {t('landing.ctaPrimary')}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="h-12 w-full px-6 text-base sm:w-auto"
+                >
+                  <a href="#how">{t('landing.ctaSecondary')}</a>
+                </Button>
+              </div>
+            </Reveal>
+
+            <Reveal delay={320}>
+              <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground lg:justify-start">
+                {[t('landing.trust1'), t('landing.trust2'), t('landing.trust3')].map((item) => (
+                  <li key={item} className="flex items-center gap-1.5">
+                    <Check className="h-4 w-4 text-primary" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+          </div>
+
+          <Reveal delay={160} className="flex justify-center lg:justify-end">
+            <StudyMockup />
+          </Reveal>
+        </div>
+
+        {/* honest capability strip — replaces fabricated metrics */}
+        <Reveal delay={360}>
+          <dl className="mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 lg:grid-cols-4">
+            {capabilities.map(({ icon: Icon, value, label }) => (
+              <div key={label} className="flex flex-col gap-1.5 bg-card/70 p-5 backdrop-blur">
+                <Icon className="h-5 w-5 text-primary" />
+                <dt className="text-lg font-semibold tracking-tight">{value}</dt>
+                <dd className="text-sm text-muted-foreground">{label}</dd>
+              </div>
+            ))}
+          </dl>
+        </Reveal>
+      </section>
+
+      {/* ── Features ─────────────────────────────────────────── */}
+      <section id="features" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            {t('landing.featuresEyebrow')}
+          </p>
+          <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+            {t('landing.featuresTitle')}
+          </h2>
+          <p className="mt-4 text-pretty text-base text-muted-foreground sm:text-lg">
+            {t('landing.featuresSubtitle')}
+          </p>
+        </Reveal>
+
+        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map(({ icon: Icon, title, body }, i) => (
+            <Reveal key={title} delay={(i % 3) * 70}>
+              <div className="group h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elegant">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-5 text-base font-semibold tracking-tight">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── How it works ─────────────────────────────────────── */}
+      <section id="how" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            {t('landing.howEyebrow')}
+          </p>
+          <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+            {t('landing.howTitle')}
+          </h2>
+          <p className="mt-4 text-pretty text-base text-muted-foreground sm:text-lg">
+            {t('landing.howSubtitle')}
+          </p>
+        </Reveal>
+
+        <div className="relative mt-14 grid gap-4 md:grid-cols-3">
+          <div
+            aria-hidden
+            className="absolute left-0 right-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block"
+          />
+          {steps.map(({ title, body }, i) => (
+            <Reveal key={title} delay={i * 90}>
+              <div className="relative h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
+                  {i + 1}
+                </span>
+                <h3 className="mt-5 text-base font-semibold tracking-tight">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── AI deck generation (honest) ──────────────────────── */}
+      <section id="ai" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <Reveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              {t('landing.aiEyebrow')}
+            </p>
+            <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+              {t('landing.aiTitle')}
+            </h2>
+            <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+              {t('landing.aiSubtitle')}
+            </p>
+
+            <ul className="mt-8 space-y-5">
+              {aiPoints.map(({ icon: Icon, title, body }) => (
+                <li key={title} className="flex gap-4">
+                  <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-7 rounded-xl border border-border/60 bg-card/50 px-4 py-3 text-sm text-muted-foreground">
+              {t('landing.aiNote')}
+            </p>
+          </Reveal>
+
+          <Reveal delay={120} className="flex justify-center lg:justify-end">
+            <AiMockup />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── Use cases (replaces fabricated testimonials) ─────── */}
+      <section id="use-cases" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            {t('landing.useCasesEyebrow')}
+          </p>
+          <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+            {t('landing.useCasesTitle')}
+          </h2>
+          <p className="mt-4 text-pretty text-base text-muted-foreground sm:text-lg">
+            {t('landing.useCasesSubtitle')}
+          </p>
+        </Reveal>
+
+        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {useCases.map(({ icon: Icon, title, body }, i) => (
+            <Reveal key={title} delay={(i % 4) * 70}>
+              <div className="group h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elegant">
+                <Icon className="h-6 w-6 text-primary transition-transform duration-300 group-hover:scale-105" />
+                <h3 className="mt-5 text-base font-semibold tracking-tight">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Final CTA ────────────────────────────────────────── */}
+      <section className="mx-auto w-full max-w-6xl px-4 pb-24 pt-4 sm:px-6">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-primary px-6 py-14 text-center text-primary-foreground shadow-elegant sm:px-14 sm:py-16">
+            <div
+              aria-hidden
+              className="absolute inset-0 opacity-[0.12]"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)',
+                backgroundSize: '44px 44px',
+                maskImage: 'radial-gradient(ellipse 70% 80% at 50% 0%, black, transparent 75%)',
+                WebkitMaskImage:
+                  'radial-gradient(ellipse 70% 80% at 50% 0%, black, transparent 75%)',
+              }}
+            />
+            <div className="relative">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-foreground/70">
+                {t('landing.finalCtaEyebrow')}
+              </p>
+              <h2 className="mx-auto mt-4 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+                {t('landing.finalCtaTitle')}
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-primary-foreground/80 sm:text-lg">
+                {t('landing.finalCtaSubtitle')}
+              </p>
+              <div className="mt-8 flex justify-center">
+                <Button
+                  onClick={goLogin}
+                  size="lg"
+                  variant="secondary"
+                  className="group h-12 gap-2 bg-background px-7 text-base font-semibold text-foreground shadow-lg transition-transform hover:scale-[1.02] hover:bg-background/95"
+                >
+                  {t('landing.finalCtaButton')}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── Footer ───────────────────────────────────────────── */}
+      <footer className="border-t border-border/60 bg-background/60 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:px-6">
+          <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+            <Wordmark />
+            <span className="hidden text-muted-foreground sm:inline">
+              · {t('landing.footerTagline')}
+            </span>
+          </div>
+          <p className="text-center sm:text-right">
+            © {currentYear} <span translate="no">Flash Learn</span> · {t('landing.footerRights')} ·{' '}
+            <a
+              href="https://github.com/princeneres"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Prince Neres
+            </a>
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
 };
 
 export default Landing;

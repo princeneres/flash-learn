@@ -67,7 +67,7 @@ export default {
           '100%': { opacity: 0, transform: 'scale(0.95)' },
         },
         'fade-up': {
-          '0%': { opacity: 0, transform: 'translateY(24px)' },
+          '0%': { opacity: 0, transform: 'translateY(14px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' },
         },
         'fade-in': {
@@ -107,7 +107,7 @@ export default {
       animation: {
         enter: 'enter 150ms ease-out',
         exit: 'exit 150ms ease-in',
-        'fade-up': 'fade-up 700ms ease-out both',
+        'fade-up': 'fade-up 600ms cubic-bezier(0.16, 1, 0.3, 1) both',
         'fade-in': 'fade-in 600ms ease-out both',
         float: 'float 6s ease-in-out infinite',
         'float-slow': 'float-slow 14s ease-in-out infinite',

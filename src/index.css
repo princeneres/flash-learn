@@ -121,6 +121,7 @@
   .animate-shimmer,
   .animate-spin-slow,
   .animate-marquee,
+  .animate-fade-up,
   .shimmer-text {
     animation: none !important;
   }
@@ -136,21 +137,41 @@
     color: transparent;
   }
 
+  /* One restrained brand glow — primary, with a faint warm note. No rainbow. */
   .bg-mesh {
     background-image:
-      radial-gradient(at 20% 20%, rgba(59, 130, 246, 0.25) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(139, 92, 246, 0.22) 0px, transparent 50%),
-      radial-gradient(at 0% 80%, rgba(251, 191, 36, 0.2) 0px, transparent 50%),
-      radial-gradient(at 80% 80%, rgba(56, 189, 248, 0.2) 0px, transparent 50%);
+      radial-gradient(48rem 36rem at 50% -8%, hsl(var(--primary) / 0.1), transparent 60%),
+      radial-gradient(36rem 28rem at 88% 6%, hsl(var(--warm) / 0.06), transparent 60%);
   }
 
+  /* Barely-there technical grid, faded out toward the edges. */
   .grid-pattern {
     background-image:
-      linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 70%);
-    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 70%);
+      linear-gradient(to right, hsl(var(--foreground) / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 75% 55% at 50% 0%, black 20%, transparent 72%);
+    -webkit-mask-image: radial-gradient(ellipse 75% 55% at 50% 0%, black 20%, transparent 72%);
+  }
+
+  /* Soft, layered product shadow — the premium "lifted surface" look. */
+  .shadow-elegant {
+    box-shadow:
+      0 1px 2px hsl(224 71% 4% / 0.04),
+      0 8px 24px -12px hsl(224 71% 4% / 0.15),
+      0 24px 48px -24px hsl(224 71% 4% / 0.2);
+  }
+
+  .dark .shadow-elegant {
+    box-shadow:
+      0 1px 2px hsl(0 0% 0% / 0.4),
+      0 16px 40px -16px hsl(0 0% 0% / 0.55),
+      0 32px 64px -32px hsl(0 0% 0% / 0.5);
+  }
+
+  /* Hairline divider that reads on both themes. */
+  .border-hairline {
+    border-color: hsl(var(--foreground) / 0.08);
   }
 
   .shimmer-text {
