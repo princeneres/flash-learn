@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Play, Pause, AudioLines } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MediaStorageService } from '../services/MediaStorageService';
@@ -20,9 +21,10 @@ export const PlayAudioButton: React.FC<Props> = ({
   ownerId,
   className,
   size = 'md',
-  ariaLabel = 'Play audio',
+  ariaLabel,
   autoplay,
 }) => {
+  const { t } = useTranslation();
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
@@ -117,11 +119,11 @@ export const PlayAudioButton: React.FC<Props> = ({
     <button
       type="button"
       onClick={handleClick}
-      aria-label={ariaLabel}
-      title={missing ? 'Audio not stored on this device' : undefined}
+      aria-label={ariaLabel ?? (playing ? t('audio.pause') : t('audio.play'))}
+      title={missing ? t('audio.notStored') : undefined}
       disabled={!url}
       className={clsx(
-        'inline-flex items-center justify-center rounded-full border transition active:scale-95',
+        'inline-flex items-center justify-center rounded-full border transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         sizeCls,
         missing
           ? 'border-border/40 bg-muted/20 text-muted-foreground/50 cursor-not-allowed'
