@@ -43,7 +43,7 @@ export const fromDbDeck = (r: DbDeck): Deck => ({
 });
 
 export const toDbDeck = (
-  d: Partial<Deck> & { ownerId: string }
+  d: Partial<Deck> & { ownerId: string },
 ): Partial<DbDeck> & { owner_id: string } => ({
   owner_id: d.ownerId,
   owner_name: d.ownerName ?? null,
@@ -68,6 +68,40 @@ export const fromDbCard = (r: DbCard): Card => ({
   repetitions: r.repetitions,
   status: r.status,
   createdAt: r.created_at,
+});
+
+export interface DbReviewLog {
+  id: string;
+  owner_id: string;
+  card_id: string | null;
+  deck_id: string | null;
+  deck_category: string | null;
+  quality: number;
+  was_correct: boolean;
+  prev_status: string | null;
+  reviewed_at: string;
+}
+
+export interface ReviewLog {
+  id: string;
+  cardId: string | null;
+  deckId: string | null;
+  deckCategory: string;
+  quality: number;
+  wasCorrect: boolean;
+  prevStatus: string | null;
+  reviewedAt: string;
+}
+
+export const fromDbReviewLog = (r: DbReviewLog): ReviewLog => ({
+  id: r.id,
+  cardId: r.card_id,
+  deckId: r.deck_id,
+  deckCategory: r.deck_category ?? '',
+  quality: r.quality,
+  wasCorrect: r.was_correct,
+  prevStatus: r.prev_status,
+  reviewedAt: r.reviewed_at,
 });
 
 export interface DbProfile {

@@ -43,11 +43,7 @@ const rethrow = (err: unknown): never => {
 };
 
 export const CardService = {
-  createCard: async (
-    ownerId: string,
-    deckId: string,
-    card: Partial<Card>
-  ): Promise<string> => {
+  createCard: async (ownerId: string, deckId: string, card: Partial<Card>): Promise<string> => {
     const { data, error } = await supabase
       .from(TABLE)
       .insert({
@@ -65,11 +61,7 @@ export const CardService = {
     return data!.id as string;
   },
 
-  bulkCreateCards: async (
-    ownerId: string,
-    deckId: string,
-    cards: BulkInput[]
-  ): Promise<number> => {
+  bulkCreateCards: async (ownerId: string, deckId: string, cards: BulkInput[]): Promise<number> => {
     if (cards.length === 0) return 0;
     const CHUNK = 500;
     let inserted = 0;
@@ -92,10 +84,7 @@ export const CardService = {
   },
 
   getDeckCards: async (deckId: string): Promise<Card[]> => {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('deck_id', deckId);
+    const { data, error } = await supabase.from(TABLE).select('*').eq('deck_id', deckId);
     if (error) throw error;
     return (data ?? []).map(fromDbCard);
   },
@@ -146,13 +135,11 @@ export const CardService = {
     return (data ?? []).map(fromDbCard);
   },
 
-  processReview: async (card: Card, quality: number) => {
-    const result = calculateReview(
-      quality,
-      card.interval,
-      card.easeFactor,
-      card.repetitions
-    );
+  processReview: async (card: Card, quality: number, deckCategory?: string) => {
+    const result = calculateReview(quality, card.interval, card.easeFactor, card.repetitions);
+
+    // Captured before the update so the stats "new vs review" split is accurate.
+    const prevStatus = card.status;
 
     const { error } = await supabase
       .from(TABLE)
@@ -167,6 +154,23 @@ export const CardService = {
     if (error) throw error;
 
     await GamificationService.recordReview(card.id, quality);
+
+    // Personal study history for the Stats page. Fire-and-forget: a logging
+    // failure must never break the study session (mirrors recordReview).
+    try {
+      const { error: logError } = await supabase.from('review_logs').insert({
+        owner_id: card.ownerId,
+        card_id: card.id,
+        deck_id: card.deckId,
+        deck_category: deckCategory ?? null,
+        quality,
+        was_correct: quality >= 3,
+        prev_status: prevStatus,
+      });
+      if (logError) console.error('Failed to record review log', logError);
+    } catch (logError) {
+      console.error('Failed to record review log', logError);
+    }
 
     return result;
   },
