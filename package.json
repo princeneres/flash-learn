@@ -9,7 +9,12 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:link": "supabase link --project-ref txjyqvaijuvuzpplhxag",
+    "db:pull": "supabase db pull",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --linked > src/types/database.ts",
+    "db:sync": "bash scripts/db-sync.sh"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.1",
