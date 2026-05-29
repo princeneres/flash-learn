@@ -1,11 +1,16 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
   preview: {
     allowedHosts: ['.trycloudflare.com', '.ngrok-free.app', '.ngrok.io'],
+  },
+  // Guard against "Invalid hook call" from a duplicated React (e.g. if deps get
+  // installed with a different package manager): always resolve a single copy.
+  resolve: {
+    dedupe: ['react', 'react-dom'],
   },
   plugins: [
     react(),
@@ -77,8 +82,7 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) =>
-              url.hostname.endsWith('.supabase.co') &&
-              url.pathname.startsWith('/storage/'),
+              url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/'),
             handler: 'CacheFirst',
             options: {
               cacheName: 'supabase-storage',
@@ -91,4 +95,4 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
-})
+});

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -n \"$f\" ] && [ -f \"$f\" ] && pnpm exec prettier --write --ignore-unknown \"$f\" 2>/dev/null; exit 0",
+            "statusMessage": "Formatando com Prettier..."
+          }
+        ]
+      }
+    ]
+  }
+}
