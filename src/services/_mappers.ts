@@ -4,7 +4,8 @@ import type { Card } from './CardService';
 interface DbDeck {
   id: string;
   owner_id: string;
-  owner_name: string | null;
+  // Derived at read time from profiles via get_public_decks(); never stored.
+  owner_name?: string | null;
   title: string;
   category: string | null;
   tags: string[];
@@ -46,7 +47,6 @@ export const toDbDeck = (
   d: Partial<Deck> & { ownerId: string },
 ): Partial<DbDeck> & { owner_id: string } => ({
   owner_id: d.ownerId,
-  owner_name: d.ownerName ?? null,
   title: d.title ?? '',
   category: d.category ?? null,
   tags: d.tags ?? [],

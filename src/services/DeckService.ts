@@ -7,6 +7,7 @@ import { parsePlanError } from '../lib/planErrors';
 export interface Deck {
   id: string;
   ownerId: string;
+  /** Owner's current display name, resolved from their profile (public decks only). */
   ownerName?: string;
   title: string;
   category: string;
@@ -21,11 +22,7 @@ const TABLE = 'decks';
 export const DeckService = {
   createDeck: async (ownerId: string, deck: Partial<Deck>): Promise<string> => {
     const payload = toDbDeck({ ...deck, ownerId });
-    const { data, error } = await supabase
-      .from(TABLE)
-      .insert(payload)
-      .select('id')
-      .single();
+    const { data, error } = await supabase.from(TABLE).insert(payload).select('id').single();
     if (error) {
       const plan = parsePlanError(error);
       throw plan ?? error;
@@ -44,11 +41,7 @@ export const DeckService = {
   },
 
   getDeck: async (deckId: string): Promise<Deck | null> => {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('id', deckId)
-      .maybeSingle();
+    const { data, error } = await supabase.from(TABLE).select('*').eq('id', deckId).maybeSingle();
     if (error) throw error;
     return data ? fromDbDeck(data) : null;
   },
@@ -59,7 +52,6 @@ export const DeckService = {
     if (patch.category !== undefined) payload.category = patch.category;
     if (patch.tags !== undefined) payload.tags = patch.tags;
     if (patch.isPublic !== undefined) payload.is_public = patch.isPublic;
-    if (patch.ownerName !== undefined) payload.owner_name = patch.ownerName;
     const { error } = await supabase.from(TABLE).update(payload).eq('id', deckId);
     if (error) throw error;
   },
@@ -75,7 +67,7 @@ export const DeckService = {
         back: row.back,
         frontAudio: row.front_audio,
         backAudio: row.back_audio,
-      })
+      }),
     );
     if (refs.length > 0) {
       try {
@@ -88,12 +80,10 @@ export const DeckService = {
     if (error) throw error;
   },
 
+  // Served through an RPC so each deck carries its owner's *current* profile
+  // name (resolving it client-side is blocked by RLS on other users' profiles).
   getPublicDecks: async (): Promise<Deck[]> => {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select('*')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false });
+    const { data, error } = await supabase.rpc('get_public_decks');
     if (error) throw error;
     return (data ?? []).map(fromDbDeck);
   },

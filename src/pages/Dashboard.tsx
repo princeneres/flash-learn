@@ -152,9 +152,6 @@ const Dashboard: React.FC = () => {
       const { DeckImportService } = await import('../services/DeckImportService');
       const { decksCreated, cardsCreated } = await DeckImportService.importBundle(
         currentUser!.id,
-        (currentUser?.user_metadata?.full_name as string | undefined) ||
-          currentUser?.email ||
-          undefined,
         importBundle,
         maxCardsPerDeck,
         totalRoom,
@@ -220,10 +217,6 @@ const Dashboard: React.FC = () => {
         category: normalizeCategory(newDeckCategory),
         tags: newDeckTags,
         isPublic: isDeckPublic,
-        ownerName:
-          (currentUser?.user_metadata?.full_name as string | undefined) ||
-          currentUser?.email ||
-          undefined,
       });
       toast({ title: t('dashboard.createSuccess') });
       setNewDeckTitle('');
@@ -368,9 +361,6 @@ const Dashboard: React.FC = () => {
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <p className="text-sm uppercase tracking-widest text-muted-foreground">
-            {t('common.back')}
-          </p>
           <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
           {limits && (
             <p className="mt-2 text-xs text-muted-foreground tabular-nums">

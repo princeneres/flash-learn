@@ -33,21 +33,39 @@ export interface ImportBundle {
 const mimeFromName = (name: string): string => {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
   switch (ext) {
-    case 'mp3': return 'audio/mpeg';
-    case 'ogg': case 'opus': return 'audio/ogg';
-    case 'wav': return 'audio/wav';
-    case 'm4a': case 'mp4': return 'audio/mp4';
-    case 'webm': return 'audio/webm';
-    case 'aac': return 'audio/aac';
-    case 'flac': return 'audio/flac';
-    case 'png': return 'image/png';
-    case 'jpg': case 'jpeg': return 'image/jpeg';
-    case 'gif': return 'image/gif';
-    case 'webp': return 'image/webp';
-    case 'svg': return 'image/svg+xml';
-    case 'bmp': return 'image/bmp';
-    case 'avif': return 'image/avif';
-    default: return 'application/octet-stream';
+    case 'mp3':
+      return 'audio/mpeg';
+    case 'ogg':
+    case 'opus':
+      return 'audio/ogg';
+    case 'wav':
+      return 'audio/wav';
+    case 'm4a':
+    case 'mp4':
+      return 'audio/mp4';
+    case 'webm':
+      return 'audio/webm';
+    case 'aac':
+      return 'audio/aac';
+    case 'flac':
+      return 'audio/flac';
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    case 'svg':
+      return 'image/svg+xml';
+    case 'bmp':
+      return 'image/bmp';
+    case 'avif':
+      return 'image/avif';
+    default:
+      return 'application/octet-stream';
   }
 };
 
@@ -82,7 +100,9 @@ const parseNative = async (file: File): Promise<ImportBundle> => {
   const decks: NativeDeck[] = manifest.decks.map((b: any) => ({
     title: String(b?.deck?.title ?? 'Untitled'),
     category: typeof b?.deck?.category === 'string' ? b.deck.category : undefined,
-    tags: Array.isArray(b?.deck?.tags) ? b.deck.tags.filter((t: unknown) => typeof t === 'string') : [],
+    tags: Array.isArray(b?.deck?.tags)
+      ? b.deck.tags.filter((t: unknown) => typeof t === 'string')
+      : [],
     isPublic: !!b?.deck?.isPublic,
     cards: Array.isArray(b?.cards)
       ? b.cards.map((c: any) => ({
@@ -117,11 +137,10 @@ export const DeckImportService = {
 
   importBundle: async (
     uid: string,
-    ownerName: string | undefined,
     bundle: ImportBundle,
     perDeckLimit: number,
     totalRoom: number,
-    onMediaProgress?: (done: number, total: number) => void
+    onMediaProgress?: (done: number, total: number) => void,
   ): Promise<{ decksCreated: number; cardsCreated: number }> => {
     let remaining = Math.max(0, totalRoom);
     const trimmedDecks = bundle.decks.map((d) => {
@@ -136,9 +155,7 @@ export const DeckImportService = {
         for (const r of collectCardMediaRefs(c)) keptRefs.add(r.ref);
       }
     }
-    const mediaToUpload = Array.from(bundle.mediaBlobs).filter(([ref]) =>
-      keptRefs.has(ref)
-    );
+    const mediaToUpload = Array.from(bundle.mediaBlobs).filter(([ref]) => keptRefs.has(ref));
     if (mediaToUpload.length > 0) {
       let done = 0;
       onMediaProgress?.(0, mediaToUpload.length);
@@ -157,7 +174,6 @@ export const DeckImportService = {
         category: deck.category ?? 'General',
         tags: deck.tags ?? [],
         isPublic: !!deck.isPublic,
-        ownerName,
       });
       decksCreated++;
       const inserted = await CardService.bulkCreateCards(
@@ -169,7 +185,7 @@ export const DeckImportService = {
           frontAudio: c.frontAudio,
           backAudio: c.backAudio,
           tags: c.tags,
-        }))
+        })),
       );
       cardsCreated += inserted;
     }

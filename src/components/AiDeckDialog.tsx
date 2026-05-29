@@ -1,38 +1,26 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
-import { Sparkles, Trash2, ArrowLeft, Wand2 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { Sparkles, Trash2, ArrowLeft, Wand2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import {
   LlmService,
   MAX_CARDS_PER_GENERATION,
   llmErrorKey,
   type Difficulty,
   type GeneratedCard,
-} from "../services/LlmService";
-import { DeckService } from "../services/DeckService";
-import { CardService } from "../services/CardService";
-import { parsePlanError, planErrorTitle } from "../lib/planErrors";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import { Switch } from "./ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
-import { useToast } from "./ui/use-toast";
+} from '../services/LlmService';
+import { DeckService } from '../services/DeckService';
+import { CardService } from '../services/CardService';
+import { parsePlanError, planErrorTitle } from '../lib/planErrors';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Switch } from './ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useToast } from './ui/use-toast';
 
 interface AiDeckDialogProps {
   open: boolean;
@@ -55,35 +43,35 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
   const { currentUser } = useAuth();
   const { toast } = useToast();
 
-  const uid = currentUser?.id ?? "";
+  const uid = currentUser?.id ?? '';
   const configured = uid ? LlmService.isConfigured(uid) : false;
   const maxAllowed = Math.max(0, Math.min(maxCardsPerDeck, totalRoom, MAX_CARDS_PER_GENERATION));
 
-  const defaultLanguage = i18n.language?.startsWith("pt") ? "Português" : "English";
+  const defaultLanguage = i18n.language?.startsWith('pt') ? 'Português' : 'English';
 
-  const [theme, setTheme] = useState("");
+  const [theme, setTheme] = useState('');
   const [count, setCount] = useState(Math.min(DEFAULT_COUNT, maxAllowed));
   const [language, setLanguage] = useState(defaultLanguage);
-  const [difficulty, setDifficulty] = useState<Difficulty>("intermediate");
-  const [instructions, setInstructions] = useState("");
+  const [difficulty, setDifficulty] = useState<Difficulty>('intermediate');
+  const [instructions, setInstructions] = useState('');
   const [isPublic, setIsPublic] = useState(false);
 
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cards, setCards] = useState<GeneratedCard[] | null>(null);
-  const [deckTitle, setDeckTitle] = useState("");
+  const [deckTitle, setDeckTitle] = useState('');
 
-  const step: "form" | "preview" = cards ? "preview" : "form";
+  const step: 'form' | 'preview' = cards ? 'preview' : 'form';
 
   const reset = () => {
-    setTheme("");
+    setTheme('');
     setCount(Math.min(DEFAULT_COUNT, maxAllowed));
     setLanguage(defaultLanguage);
-    setDifficulty("intermediate");
-    setInstructions("");
+    setDifficulty('intermediate');
+    setInstructions('');
     setIsPublic(false);
     setCards(null);
-    setDeckTitle("");
+    setDeckTitle('');
     setGenerating(false);
     setSaving(false);
   };
@@ -100,7 +88,7 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
 
   const handleGenerate = async () => {
     if (!theme.trim()) {
-      toast({ title: t("ai.generate.themeRequired"), variant: "destructive" });
+      toast({ title: t('ai.generate.themeRequired'), variant: 'destructive' });
       return;
     }
     setGenerating(true);
@@ -116,16 +104,14 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
       setDeckTitle(theme.trim());
     } catch (err) {
       console.error(err);
-      toast({ title: t(llmErrorKey(err)), variant: "destructive" });
+      toast({ title: t(llmErrorKey(err)), variant: 'destructive' });
     } finally {
       setGenerating(false);
     }
   };
 
   const updateCard = (index: number, patch: Partial<GeneratedCard>) => {
-    setCards((prev) =>
-      prev ? prev.map((c, i) => (i === index ? { ...c, ...patch } : c)) : prev
-    );
+    setCards((prev) => (prev ? prev.map((c, i) => (i === index ? { ...c, ...patch } : c)) : prev));
   };
 
   const removeCard = (index: number) => {
@@ -134,7 +120,7 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
 
   const validCards = useMemo(
     () => (cards ?? []).filter((c) => c.front.trim() && c.back.trim()),
-    [cards]
+    [cards],
   );
 
   const handleConfirm = async () => {
@@ -143,29 +129,25 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
     try {
       const deckId = await DeckService.createDeck(uid, {
         title: deckTitle.trim(),
-        category: "AI",
+        category: 'AI',
         tags: [],
         isPublic,
-        ownerName:
-          (currentUser?.user_metadata?.full_name as string | undefined) ||
-          currentUser?.email ||
-          undefined,
       });
       const toSave = validCards.slice(0, maxCardsPerDeck);
       await CardService.bulkCreateCards(
         uid,
         deckId,
-        toSave.map((c) => ({ front: c.front.trim(), back: c.back.trim(), tags: c.tags }))
+        toSave.map((c) => ({ front: c.front.trim(), back: c.back.trim(), tags: c.tags })),
       );
-      toast({ title: t("ai.generate.created", { count: toSave.length }) });
+      toast({ title: t('ai.generate.created', { count: toSave.length }) });
       onCreated();
       handleClose(false);
     } catch (err) {
       console.error(err);
       const plan = parsePlanError(err);
       toast({
-        title: plan ? planErrorTitle(plan, t) : t("ai.generate.saveError"),
-        variant: "destructive",
+        title: plan ? planErrorTitle(plan, t) : t('ai.generate.saveError'),
+        variant: 'destructive',
       });
     } finally {
       setSaving(false);
@@ -176,33 +158,33 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
     if (!configured) {
       return (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t("ai.generate.notConfigured")}</p>
+          <p className="text-sm text-muted-foreground">{t('ai.generate.notConfigured')}</p>
           <Button asChild onClick={() => handleClose(false)}>
-            <Link to="/profile">{t("ai.generate.goToSettings")}</Link>
+            <Link to="/profile">{t('ai.generate.goToSettings')}</Link>
           </Button>
         </div>
       );
     }
 
     if (maxAllowed <= 0) {
-      return <p className="text-sm text-muted-foreground">{t("ai.generate.noRoom")}</p>;
+      return <p className="text-sm text-muted-foreground">{t('ai.generate.noRoom')}</p>;
     }
 
-    if (step === "preview" && cards) {
+    if (step === 'preview' && cards) {
       return (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="ai-deck-title">{t("ai.generate.deckTitle")}</Label>
+            <Label htmlFor="ai-deck-title">{t('ai.generate.deckTitle')}</Label>
             <Input
               id="ai-deck-title"
               value={deckTitle}
               onChange={(e) => setDeckTitle(e.target.value)}
-              placeholder={t("dashboard.titlePlaceholder")}
+              placeholder={t('dashboard.titlePlaceholder')}
             />
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {t("ai.generate.previewCount", { count: validCards.length })}
+            {t('ai.generate.previewCount', { count: validCards.length })}
           </p>
 
           <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
@@ -214,7 +196,7 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
                     type="button"
                     onClick={() => removeCard(i)}
                     className="rounded-full p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                    aria-label={t("ai.generate.removeCard")}
+                    aria-label={t('ai.generate.removeCard')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -222,13 +204,13 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
                 <Textarea
                   value={card.front}
                   onChange={(e) => updateCard(i, { front: e.target.value })}
-                  placeholder={t("deckDetail.frontPlaceholder")}
+                  placeholder={t('deckDetail.frontPlaceholder')}
                   className="min-h-[60px]"
                 />
                 <Textarea
                   value={card.back}
                   onChange={(e) => updateCard(i, { back: e.target.value })}
-                  placeholder={t("deckDetail.backPlaceholder")}
+                  placeholder={t('deckDetail.backPlaceholder')}
                   className="min-h-[60px]"
                 />
               </div>
@@ -236,9 +218,9 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/10 p-3">
-            <span className="text-sm font-medium">{t("visibility.fieldLabel")}</span>
+            <span className="text-sm font-medium">{t('visibility.fieldLabel')}</span>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{isPublic ? t("visibility.public") : t("visibility.private")}</span>
+              <span>{isPublic ? t('visibility.public') : t('visibility.private')}</span>
               <Switch checked={isPublic} onCheckedChange={setIsPublic} />
             </div>
           </div>
@@ -249,21 +231,19 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
     return (
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="ai-theme">{t("ai.generate.themeLabel")}</Label>
+          <Label htmlFor="ai-theme">{t('ai.generate.themeLabel')}</Label>
           <Input
             id="ai-theme"
             value={theme}
             onChange={(e) => setTheme(e.target.value)}
-            placeholder={t("ai.generate.themePlaceholder")}
+            placeholder={t('ai.generate.themePlaceholder')}
             autoFocus
           />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="ai-count">
-              {t("ai.generate.countLabel", { max: maxAllowed })}
-            </Label>
+            <Label htmlFor="ai-count">{t('ai.generate.countLabel', { max: maxAllowed })}</Label>
             <Input
               id="ai-count"
               type="number"
@@ -277,36 +257,32 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ai-difficulty">{t("ai.generate.difficultyLabel")}</Label>
+            <Label htmlFor="ai-difficulty">{t('ai.generate.difficultyLabel')}</Label>
             <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
               <SelectTrigger id="ai-difficulty">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="beginner">{t("ai.generate.beginner")}</SelectItem>
-                <SelectItem value="intermediate">{t("ai.generate.intermediate")}</SelectItem>
-                <SelectItem value="advanced">{t("ai.generate.advanced")}</SelectItem>
+                <SelectItem value="beginner">{t('ai.generate.beginner')}</SelectItem>
+                <SelectItem value="intermediate">{t('ai.generate.intermediate')}</SelectItem>
+                <SelectItem value="advanced">{t('ai.generate.advanced')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ai-language">{t("ai.generate.languageLabel")}</Label>
-          <Input
-            id="ai-language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-          />
+          <Label htmlFor="ai-language">{t('ai.generate.languageLabel')}</Label>
+          <Input id="ai-language" value={language} onChange={(e) => setLanguage(e.target.value)} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ai-instructions">{t("ai.generate.instructionsLabel")}</Label>
+          <Label htmlFor="ai-instructions">{t('ai.generate.instructionsLabel')}</Label>
           <Textarea
             id="ai-instructions"
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
-            placeholder={t("ai.generate.instructionsPlaceholder")}
+            placeholder={t('ai.generate.instructionsPlaceholder')}
             className="min-h-[80px]"
           />
         </div>
@@ -318,22 +294,17 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
     if (!configured || maxAllowed <= 0) {
       return (
         <Button type="button" variant="ghost" onClick={() => handleClose(false)}>
-          {t("common.cancel")}
+          {t('common.cancel')}
         </Button>
       );
     }
 
-    if (step === "preview") {
+    if (step === 'preview') {
       return (
         <>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setCards(null)}
-            disabled={saving}
-          >
+          <Button type="button" variant="ghost" onClick={() => setCards(null)} disabled={saving}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {t("ai.generate.back")}
+            {t('ai.generate.back')}
           </Button>
           <Button
             type="button"
@@ -341,8 +312,8 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
             disabled={saving || validCards.length === 0 || !deckTitle.trim()}
           >
             {saving
-              ? t("ai.generate.creating")
-              : t("ai.generate.confirm", { count: validCards.length })}
+              ? t('ai.generate.creating')
+              : t('ai.generate.confirm', { count: validCards.length })}
           </Button>
         </>
       );
@@ -350,12 +321,17 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
 
     return (
       <>
-        <Button type="button" variant="ghost" onClick={() => handleClose(false)} disabled={generating}>
-          {t("common.cancel")}
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => handleClose(false)}
+          disabled={generating}
+        >
+          {t('common.cancel')}
         </Button>
         <Button type="button" onClick={handleGenerate} disabled={generating || !theme.trim()}>
           <Wand2 className="mr-2 h-4 w-4" />
-          {generating ? t("ai.generate.generating") : t("ai.generate.generate")}
+          {generating ? t('ai.generate.generating') : t('ai.generate.generate')}
         </Button>
       </>
     );
@@ -367,7 +343,7 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            {t("ai.generate.title")}
+            {t('ai.generate.title')}
           </DialogTitle>
         </DialogHeader>
         {renderBody()}
