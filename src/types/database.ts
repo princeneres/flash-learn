@@ -148,6 +148,32 @@ export type Database = {
           },
         ]
       }
+      deck_favorites: {
+        Row: {
+          created_at: string
+          deck_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deck_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deck_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_favorites_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decks: {
         Row: {
           card_count: number
@@ -344,6 +370,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_deck_detail: {
+        Args: { p_deck_id: string }
+        Returns: {
+          card_count: number
+          category: string
+          created_at: string
+          id: string
+          is_public: boolean
+          owner_id: string
+          owner_name: string
+          tags: string[]
+          title: string
+        }[]
+      }
+      get_favorite_decks: {
+        Args: never
+        Returns: {
+          card_count: number
+          category: string
+          created_at: string
+          id: string
+          is_public: boolean
+          owner_id: string
+          owner_name: string
+          tags: string[]
+          title: string
+        }[]
+      }
       get_leaderboard: {
         Args: never
         Returns: {
