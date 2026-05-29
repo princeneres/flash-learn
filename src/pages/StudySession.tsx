@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CardService, type Card } from '../services/CardService';
 import { DeckService, type Deck } from '../services/DeckService';
-import { previewIntervalDays } from '../services/srsAlgorithm';
+import { previewReview } from '../services/srsAlgorithm';
 import { Button } from '../components/ui/button';
 import {
   ArrowLeft,
@@ -84,18 +84,22 @@ const StudySession: React.FC = () => {
       const result = await CardService.processReview(currentCard, quality, deck?.category);
       setQueue((prev) => {
         const [, ...rest] = prev;
-        if (quality < 3) {
-          // Carry the freshly persisted SRS state so a later pass this
+        // A card stays in this session's queue while it's still walking through
+        // the minute-based (re)learning steps; it leaves once it graduates to
+        // the day-based review schedule.
+        const stillLearning = result.status === 'learning' || result.status === 'relearning';
+        if (stillLearning) {
+          // Carry the freshly persisted SRS state so the next pass this
           // session schedules from the right baseline.
-          const relearned: Card = {
+          const updated: Card = {
             ...currentCard,
             interval: result.interval,
             easeFactor: result.easeFactor,
             repetitions: result.repetitions,
             nextReview: result.nextReview.toISOString(),
-            status: 'relearning',
+            status: result.status,
           };
-          return [...rest, relearned];
+          return [...rest, updated];
         }
         return rest;
       });
@@ -107,8 +111,12 @@ const StudySession: React.FC = () => {
   };
 
   const intervalLabel = (card: Card, quality: number): string => {
-    if (quality < 3) return t('study.intervalNow');
-    const days = previewIntervalDays(quality, card.interval, card.easeFactor, card.repetitions);
+    const result = previewReview(quality, card);
+    if (result.status === 'learning' || result.status === 'relearning') {
+      const minutes = Math.max(1, Math.round((result.nextReview.getTime() - Date.now()) / 60000));
+      return t('study.intervalMinutes', { count: minutes });
+    }
+    const days = result.interval;
     if (days < 30) return t('study.intervalDays', { count: days });
     if (days < 365) return t('study.intervalMonths', { count: Math.round(days / 30) });
     return t('study.intervalYears', { count: Math.round(days / 365) });

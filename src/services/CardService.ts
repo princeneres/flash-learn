@@ -136,7 +136,13 @@ export const CardService = {
   },
 
   processReview: async (card: Card, quality: number, deckCategory?: string) => {
-    const result = calculateReview(quality, card.interval, card.easeFactor, card.repetitions);
+    const result = calculateReview(
+      quality,
+      card.interval,
+      card.easeFactor,
+      card.repetitions,
+      card.status,
+    );
 
     // Captured before the update so the stats "new vs review" split is accurate.
     const prevStatus = card.status;
@@ -148,7 +154,7 @@ export const CardService = {
         interval: result.interval,
         ease_factor: result.easeFactor,
         repetitions: result.repetitions,
-        status: quality < 3 ? 'relearning' : 'review',
+        status: result.status,
       })
       .eq('id', card.id);
     if (error) throw error;
