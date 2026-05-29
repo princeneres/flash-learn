@@ -1,23 +1,34 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { ArrowLeft, Plus, Trash2, Search, Upload, Pencil, Download } from "lucide-react";
-import { DeckService, type Deck } from "../services/DeckService";
-import { CardService, type Card, DECK_CARD_LIMIT } from "../services/CardService";
-import type { ImportBundle, NativeCard } from "../services/DeckImportService";
-import { PlayAudioButton } from "../components/PlayAudioButton";
-import { CardEditor } from "../components/CardEditor";
-import { RichContent } from "../components/RichContent";
-import { useAuth } from "../context/AuthContext";
-import { usePlan } from "../hooks/usePlan";
-import { parsePlanError, planErrorTitle } from "../lib/planErrors";
-import { Button } from "../components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
-import { LoadingState } from "../components/LoadingState";
-import { useToast } from "../components/ui/use-toast";
-import { Input } from "../components/ui/input";
-import { looksLikeHtml } from "../lib/sanitize";
-import { collectCardMediaRefs } from "../lib/media";
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, Plus, Trash2, Search, Upload, Pencil, Download } from 'lucide-react';
+import { DeckService, type Deck } from '../services/DeckService';
+import { CardService, type Card, DECK_CARD_LIMIT } from '../services/CardService';
+import type { ImportBundle, NativeCard } from '../services/DeckImportService';
+import { PlayAudioButton } from '../components/PlayAudioButton';
+import { CardEditor } from '../components/CardEditor';
+import { RichContent } from '../components/RichContent';
+import { useAuth } from '../context/AuthContext';
+import { usePlan } from '../hooks/usePlan';
+import { parsePlanError, planErrorTitle } from '../lib/planErrors';
+import { Button } from '../components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { LoadingState } from '../components/LoadingState';
+import { useToast } from '../components/ui/use-toast';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { CategorySelect } from '../components/CategorySelect';
+import { TagInput } from '../components/TagInput';
+import { normalizeCategory } from '../lib/categories';
+import { looksLikeHtml } from '../lib/sanitize';
+import { collectCardMediaRefs } from '../lib/media';
+import { Tag } from 'lucide-react';
 
 const DeckDetail: React.FC = () => {
   const { deckId } = useParams<{ deckId: string }>();
@@ -36,13 +47,15 @@ const DeckDetail: React.FC = () => {
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
   const [saving, setSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [exportingDeck, setExportingDeck] = useState(false);
   const { toast } = useToast();
 
-  // Rename deck state
+  // Edit deck state (title + category + tags)
   const [isRenameOpen, setIsRenameOpen] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
+  const [renameValue, setRenameValue] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
   const [renaming, setRenaming] = useState(false);
 
   // Import state
@@ -55,7 +68,9 @@ const DeckDetail: React.FC = () => {
 
   const isOwner = !!deck && !!currentUser && deck.ownerId === currentUser.id;
   const maxCardsPerDeck = limits?.plan.maxCardsPerDeck ?? DECK_CARD_LIMIT;
-  const totalRoom = limits ? Math.max(0, limits.plan.maxTotalCards - limits.usage.totalCards) : Infinity;
+  const totalRoom = limits
+    ? Math.max(0, limits.plan.maxTotalCards - limits.usage.totalCards)
+    : Infinity;
   const handlePlanError = (err: unknown, fallbackKey: string): void => {
     const plan = parsePlanError(err);
     if (plan) {
@@ -75,7 +90,7 @@ const DeckDetail: React.FC = () => {
     try {
       const [deckData, cardsData] = await Promise.all([
         DeckService.getDeck(deckId!),
-        CardService.getDeckCards(deckId!)
+        CardService.getDeckCards(deckId!),
       ]);
 
       if (!deckData) {
@@ -127,10 +142,7 @@ const DeckDetail: React.FC = () => {
       loadData();
     } catch (error) {
       console.error(error);
-      handlePlanError(
-        error,
-        editingCard ? 'deckDetail.editError' : 'deckDetail.createError'
-      );
+      handlePlanError(error, editingCard ? 'deckDetail.editError' : 'deckDetail.createError');
     } finally {
       setSaving(false);
     }
@@ -153,20 +165,31 @@ const DeckDetail: React.FC = () => {
   const openRename = () => {
     if (!deck) return;
     setRenameValue(deck.title);
+    setEditCategory(normalizeCategory(deck.category));
+    setEditTags(deck.tags);
     setIsRenameOpen(true);
   };
 
   const handleRenameDeck = async (e: React.FormEvent) => {
     e.preventDefault();
     const title = renameValue.trim();
-    if (!deck || !title || title === deck.title) {
+    if (!deck || !title) {
+      setIsRenameOpen(false);
+      return;
+    }
+    const category = normalizeCategory(editCategory);
+    const unchanged =
+      title === deck.title &&
+      category === normalizeCategory(deck.category) &&
+      JSON.stringify(editTags) === JSON.stringify(deck.tags);
+    if (unchanged) {
       setIsRenameOpen(false);
       return;
     }
     setRenaming(true);
     try {
-      await DeckService.updateDeck(deck.id, { title });
-      setDeck({ ...deck, title });
+      await DeckService.updateDeck(deck.id, { title, category, tags: editTags });
+      setDeck({ ...deck, title, category, tags: editTags });
       toast({ title: t('deckDetail.renameSuccess') });
       setIsRenameOpen(false);
     } catch (error) {
@@ -215,7 +238,7 @@ const DeckDetail: React.FC = () => {
     setImportBundle(null);
     setImportParsing(true);
     try {
-      const { DeckImportService } = await import("../services/DeckImportService");
+      const { DeckImportService } = await import('../services/DeckImportService');
       const bundle = await DeckImportService.parseFile(file);
       setImportBundle(bundle);
       const total = bundle.decks.reduce((s, d) => s + d.cards.length, 0);
@@ -265,10 +288,10 @@ const DeckDetail: React.FC = () => {
         for (const r of collectCardMediaRefs(c)) keptRefs.add(r.ref);
       }
       const mediaToUpload = Array.from(importBundle.mediaBlobs).filter(([ref]) =>
-        keptRefs.has(ref)
+        keptRefs.has(ref),
       );
       if (mediaToUpload.length > 0) {
-        const { MediaStorageService } = await import("../services/MediaStorageService");
+        const { MediaStorageService } = await import('../services/MediaStorageService');
         setAudioProgress({ done: 0, total: mediaToUpload.length });
         let done = 0;
         for (const [ref, { blob, kind }] of mediaToUpload) {
@@ -278,11 +301,7 @@ const DeckDetail: React.FC = () => {
         }
       }
 
-      const count = await CardService.bulkCreateCards(
-        currentUser!.id,
-        deckId!,
-        cardsForInsert
-      );
+      const count = await CardService.bulkCreateCards(currentUser!.id, deckId!, cardsForInsert);
       if (count < importTotal) {
         toast({
           title: t('deckDetail.importTruncated', {
@@ -320,13 +339,12 @@ const DeckDetail: React.FC = () => {
   };
   if (loading) return <LoadingState message={t('common.loading')} />;
 
-  const stripForSearch = (s: string): string =>
-    looksLikeHtml(s) ? s.replace(/<[^>]+>/g, ' ') : s;
+  const stripForSearch = (s: string): string => (looksLikeHtml(s) ? s.replace(/<[^>]+>/g, ' ') : s);
 
   const filteredCards = cards.filter((card) =>
     [card.front, card.back].some((text) =>
-      stripForSearch(text).toLowerCase().includes(searchTerm.toLowerCase())
-    )
+      stripForSearch(text).toLowerCase().includes(searchTerm.toLowerCase()),
+    ),
   );
   if (!deck) return null;
 
@@ -334,8 +352,11 @@ const DeckDetail: React.FC = () => {
     <div>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate('/')}
-            className="rounded-full border border-border/60 text-muted-foreground">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/')}
+            className="rounded-full border border-border/60 text-muted-foreground"
+          >
             <ArrowLeft className="w-4 h-4" />
             <span className="sr-only">{t('common.back')}</span>
           </Button>
@@ -347,7 +368,7 @@ const DeckDetail: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   onClick={openRename}
-                  aria-label={t('deckDetail.rename')}
+                  aria-label={t('deckDetail.editTitle')}
                   className="text-muted-foreground"
                 >
                   <Pencil className="w-4 h-4" />
@@ -357,10 +378,21 @@ const DeckDetail: React.FC = () => {
             <p className="text-muted-foreground">
               {t('deckDetail.cardCountLimit', { count: cards.length, limit: maxCardsPerDeck })}
             </p>
+            {(normalizeCategory(deck.category) || deck.tags.length > 0) && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {normalizeCategory(deck.category) && (
+                  <Badge variant="warm">{normalizeCategory(deck.category)}</Badge>
+                )}
+                {deck.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary">
+                    <Tag className="h-3 w-3" aria-hidden />
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
             {!isOwner && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('deckDetail.readOnlyHint')}
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{t('deckDetail.readOnlyHint')}</p>
             )}
           </div>
         </div>
@@ -402,7 +434,10 @@ const DeckDetail: React.FC = () => {
             </div>
           ) : (
             filteredCards.map((card) => (
-              <div key={card.id} className="flex items-start justify-between gap-4 p-5 transition hover:bg-muted/30">
+              <div
+                key={card.id}
+                className="flex items-start justify-between gap-4 p-5 transition hover:bg-muted/30"
+              >
                 <div className="grid flex-1 gap-4 md:grid-cols-2">
                   <div className="flex items-start gap-2">
                     {card.frontAudio && (
@@ -420,11 +455,7 @@ const DeckDetail: React.FC = () => {
                   </div>
                   <div className="flex items-start gap-2">
                     {card.backAudio && (
-                      <PlayAudioButton
-                        audioRef={card.backAudio}
-                        ownerId={card.ownerId}
-                        size="sm"
-                      />
+                      <PlayAudioButton audioRef={card.backAudio} ownerId={card.ownerId} size="sm" />
                     )}
                     <RichContent
                       html={card.back}
@@ -435,10 +466,20 @@ const DeckDetail: React.FC = () => {
                 </div>
                 {isOwner && (
                   <div className="flex shrink-0 gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(card)} aria-label={t('deckDetail.editCard')}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openEdit(card)}
+                      aria-label={t('deckDetail.editCard')}
+                    >
                       <Pencil className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCard(card.id)} aria-label={t('common.delete')}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteCard(card.id)}
+                      aria-label={t('common.delete')}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -453,7 +494,7 @@ const DeckDetail: React.FC = () => {
         <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t('deckDetail.renameTitle')}</DialogTitle>
+              <DialogTitle>{t('deckDetail.editTitle')}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleRenameDeck} className="space-y-4">
               <div className="space-y-2">
@@ -467,6 +508,22 @@ const DeckDetail: React.FC = () => {
                   placeholder={t('deckDetail.renamePlaceholder')}
                   autoFocus
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="edit-deck-category">
+                  {t('categories.fieldLabel')}
+                </label>
+                <CategorySelect
+                  id="edit-deck-category"
+                  value={editCategory}
+                  onChange={setEditCategory}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="edit-deck-tags">
+                  {t('categories.tagsLabel')}
+                </label>
+                <TagInput id="edit-deck-tags" tags={editTags} onChange={setEditTags} />
               </div>
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setIsRenameOpen(false)}>
@@ -494,9 +551,7 @@ const DeckDetail: React.FC = () => {
               <DialogTitle>{t('deckDetail.importTitle')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {t('deckDetail.importDescription')}
-              </p>
+              <p className="text-sm text-muted-foreground">{t('deckDetail.importDescription')}</p>
               <div className="space-y-2">
                 <label className="text-sm font-medium block">
                   {t('deckDetail.importChooseFile')}
@@ -508,16 +563,12 @@ const DeckDetail: React.FC = () => {
                   disabled={importParsing || importing}
                 />
                 {!importFile && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('deckDetail.importNoFile')}
-                  </p>
+                  <p className="text-xs text-muted-foreground">{t('deckDetail.importNoFile')}</p>
                 )}
               </div>
 
               {importParsing && (
-                <p className="text-sm text-muted-foreground">
-                  {t('deckDetail.importParsing')}
-                </p>
+                <p className="text-sm text-muted-foreground">{t('deckDetail.importParsing')}</p>
               )}
 
               {audioProgress && audioProgress.total > 0 && (
@@ -561,7 +612,9 @@ const DeckDetail: React.FC = () => {
                     {flatImportCards.slice(0, 5).map((c, i) => (
                       <div key={i} className="grid grid-cols-2 gap-2 p-2 text-xs">
                         <span className="truncate">{c.front.replace(/<[^>]+>/g, ' ').trim()}</span>
-                        <span className="truncate text-muted-foreground">{c.back.replace(/<[^>]+>/g, ' ').trim()}</span>
+                        <span className="truncate text-muted-foreground">
+                          {c.back.replace(/<[^>]+>/g, ' ').trim()}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -584,11 +637,7 @@ const DeckDetail: React.FC = () => {
                 type="button"
                 onClick={handleImportConfirm}
                 disabled={
-                  importing ||
-                  importParsing ||
-                  !importBundle ||
-                  importTotal === 0 ||
-                  importBlocked
+                  importing || importParsing || !importBundle || importTotal === 0 || importBlocked
                 }
               >
                 {importing
@@ -644,18 +693,13 @@ const DeckDetail: React.FC = () => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={
-                    saving ||
-                    !hasCardContent(front) ||
-                    !hasCardContent(back) ||
-                    atLimit
-                  }
+                  disabled={saving || !hasCardContent(front) || !hasCardContent(back) || atLimit}
                 >
                   {saving
                     ? t('common.loading')
                     : editingCard
-                    ? t('common.save')
-                    : t('deckDetail.addCard')}
+                      ? t('common.save')
+                      : t('deckDetail.addCard')}
                 </Button>
               </DialogFooter>
             </form>
