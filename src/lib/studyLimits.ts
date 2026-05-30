@@ -31,3 +31,25 @@ export function setNewLimit(deckId: string, limit: number): void {
     /* ignore storage failures (private mode, quota, etc.) */
   }
 }
+
+const typeAnswerKeyFor = (deckId: string): string => `fl.typeAnswer.${deckId}`;
+
+/**
+ * Whether a deck prompts the learner to type the answer before revealing it
+ * (active recall). Off by default. Cloze cards ignore this — they have their
+ * own reveal flow.
+ */
+export function getTypeAnswer(deckId: string): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(typeAnswerKeyFor(deckId)) === 'true';
+}
+
+/** Persists a deck's "type the answer" study preference. */
+export function setTypeAnswer(deckId: string, enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(typeAnswerKeyFor(deckId), String(enabled));
+  } catch {
+    /* ignore storage failures (private mode, quota, etc.) */
+  }
+}

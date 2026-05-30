@@ -243,7 +243,9 @@
     "favorite": "Adicionar aos favoritos",
     "unfavorite": "Remover dos favoritos",
     "newLimitLabel": "Cartas novas por dia",
-    "newLimitHint": "Número máximo de cartas novas introduzidas por dia em cada sessão. As revisões nunca são limitadas."
+    "newLimitHint": "Número máximo de cartas novas introduzidas por dia em cada sessão. As revisões nunca são limitadas.",
+    "typeAnswerLabel": "Digitar a resposta",
+    "typeAnswerHint": "Peça para você digitar a resposta antes de revelá-la. Não afeta cartas com lacunas."
   },
   "study": {
     "deckNotFound": "Deck não encontrado.",
@@ -268,7 +270,11 @@
     "intervalMonths": "{{count}}m",
     "intervalYears": "{{count}}a",
     "muteSound": "Silenciar efeitos sonoros",
-    "unmuteSound": "Ativar efeitos sonoros"
+    "unmuteSound": "Ativar efeitos sonoros",
+    "typeAnswerPlaceholder": "Digite sua resposta…",
+    "checkAnswer": "Verificar",
+    "answerCorrect": "Correto!",
+    "answerIncorrect": "Resposta: {{answer}}"
   },
   "audio": {
     "play": "Reproduzir áudio",
@@ -392,7 +398,9 @@
     "audio": "Inserir áudio",
     "undo": "Desfazer",
     "redo": "Refazer",
-    "linkPrompt": "Informe a URL (deixe vazio para remover o link)"
+    "linkPrompt": "Informe a URL (deixe vazio para remover o link)",
+    "cloze": "Lacuna (cloze)",
+    "clozeHint": "Oculta o texto selecionado como lacuna para recordar"
   },
   "gamification": {
     "achievement": "Conquista desbloqueada: {{title}}"

@@ -3,6 +3,7 @@ import katex from 'katex';
 import { MediaStorageService } from '../services/MediaStorageService';
 import { sanitizeRichHtml, looksLikeHtml } from '../lib/sanitize';
 import { extractHtmlMediaRefs, parseMediaSrc, type MediaRef } from '../lib/media';
+import { renderCloze } from '../lib/cloze';
 
 interface Props {
   html: string;
@@ -11,10 +12,16 @@ interface Props {
   ownerId?: string;
   /** When true, plays the first <audio> in the rendered content once media refs resolve. */
   autoplayFirst?: boolean;
+  /**
+   * Render cloze markers ({{cN::…}}) as blanks ('front') or revealed ('back').
+   * Omit to leave markers untouched (e.g. in the deck card list preview).
+   */
+  clozeMode?: 'front' | 'back';
 }
 
 const escapeHtml = (s: string): string =>
-  s.replace(/&/g, '&amp;')
+  s
+    .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
@@ -23,13 +30,12 @@ const escapeHtml = (s: string): string =>
 const parseDoc = (html: string): Document =>
   new DOMParser().parseFromString(`<div id="__root">${html}</div>`, 'text/html');
 
-const TRANSPARENT_PX =
-  'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const TRANSPARENT_PX = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 const renderResolved = (
   doc: Document,
   resolved: Map<string, string>,
-  resolutionRan: boolean
+  resolutionRan: boolean,
 ): string => {
   doc.querySelectorAll('img').forEach((el) => {
     const ref = parseMediaSrc(el.getAttribute('src'));
@@ -59,18 +65,25 @@ const renderResolved = (
   return root?.innerHTML ?? '';
 };
 
-export const RichContent: React.FC<Props> = ({ html, className, ownerId, autoplayFirst }) => {
+export const RichContent: React.FC<Props> = ({
+  html,
+  className,
+  ownerId,
+  autoplayFirst,
+  clozeMode,
+}) => {
   const isHtml = useMemo(() => looksLikeHtml(html), [html]);
   const normalized = useMemo(() => {
     if (!html) return '';
-    if (isHtml) return sanitizeRichHtml(html);
-    return `<p>${escapeHtml(html).replace(/\n/g, '<br>')}</p>`;
-  }, [html, isHtml]);
+    const base = isHtml
+      ? sanitizeRichHtml(html)
+      : `<p>${escapeHtml(html).replace(/\n/g, '<br>')}</p>`;
+    // Cloze markers are plain text in the sanitized output; expand them last so
+    // the generated spans carry already-sanitized content.
+    return clozeMode ? renderCloze(base, clozeMode) : base;
+  }, [html, isHtml, clozeMode]);
 
-  const refs: MediaRef[] = useMemo(
-    () => extractHtmlMediaRefs(normalized),
-    [normalized]
-  );
+  const refs: MediaRef[] = useMemo(() => extractHtmlMediaRefs(normalized), [normalized]);
   const [resolved, setResolved] = useState<Map<string, string>>(new Map());
   const [resolutionRan, setResolutionRan] = useState(false);
 
@@ -88,7 +101,7 @@ export const RichContent: React.FC<Props> = ({ html, className, ownerId, autopla
         refs.map(async ({ ref, kind }) => {
           const url = await MediaStorageService.getUrl(kind, ref, ownerId);
           if (url) next.set(`${kind}:${ref}`, url);
-        })
+        }),
       );
       if (!cancelled) {
         setResolved(next);
@@ -137,9 +150,7 @@ export const RichContent: React.FC<Props> = ({ html, className, ownerId, autopla
     let raf = 0;
 
     const tryPlay = (): boolean => {
-      const audio = containerRef.current?.querySelector(
-        'audio'
-      ) as HTMLAudioElement | null;
+      const audio = containerRef.current?.querySelector('audio') as HTMLAudioElement | null;
       if (!audio || !audio.getAttribute('src')) return false;
       try {
         audio.currentTime = 0;
@@ -178,10 +189,6 @@ export const RichContent: React.FC<Props> = ({ html, className, ownerId, autopla
   }, [autoplayFirst, resolutionRan]);
 
   return (
-    <div
-      ref={containerRef}
-      className={className}
-      dangerouslySetInnerHTML={{ __html: finalHtml }}
-    />
+    <div ref={containerRef} className={className} dangerouslySetInnerHTML={{ __html: finalHtml }} />
   );
 };

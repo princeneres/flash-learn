@@ -30,7 +30,14 @@ import { normalizeCategory } from '../lib/categories';
 import { getDeckVisual } from '../lib/deckVisuals';
 import { looksLikeHtml } from '../lib/sanitize';
 import { collectCardMediaRefs } from '../lib/media';
-import { getNewLimit, setNewLimit, MAX_NEW_LIMIT } from '../lib/studyLimits';
+import {
+  getNewLimit,
+  setNewLimit,
+  MAX_NEW_LIMIT,
+  getTypeAnswer,
+  setTypeAnswer,
+} from '../lib/studyLimits';
+import { Switch } from '../components/ui/switch';
 import { cn } from '../lib/utils';
 import { Tag } from 'lucide-react';
 
@@ -63,6 +70,7 @@ const DeckDetail: React.FC = () => {
   const [editCategory, setEditCategory] = useState('');
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editNewLimit, setEditNewLimit] = useState('');
+  const [editTypeAnswer, setEditTypeAnswer] = useState(false);
   const [renaming, setRenaming] = useState(false);
 
   // Import state
@@ -177,6 +185,7 @@ const DeckDetail: React.FC = () => {
     setEditCategory(normalizeCategory(deck.category));
     setEditTags(deck.tags);
     setEditNewLimit(String(getNewLimit(deck.id)));
+    setEditTypeAnswer(getTypeAnswer(deck.id));
     setIsRenameOpen(true);
   };
 
@@ -191,6 +200,7 @@ const DeckDetail: React.FC = () => {
     // deck row so a limit-only change still takes effect.
     const parsedLimit = Number.parseInt(editNewLimit, 10);
     if (Number.isFinite(parsedLimit)) setNewLimit(deck.id, parsedLimit);
+    setTypeAnswer(deck.id, editTypeAnswer);
 
     const category = normalizeCategory(editCategory);
     const unchanged =
@@ -604,6 +614,19 @@ const DeckDetail: React.FC = () => {
                   onChange={(e) => setEditNewLimit(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">{t('deckDetail.newLimitHint')}</p>
+              </div>
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium" htmlFor="edit-deck-type-answer">
+                    {t('deckDetail.typeAnswerLabel')}
+                  </label>
+                  <p className="text-xs text-muted-foreground">{t('deckDetail.typeAnswerHint')}</p>
+                </div>
+                <Switch
+                  id="edit-deck-type-answer"
+                  checked={editTypeAnswer}
+                  onCheckedChange={setEditTypeAnswer}
+                />
               </div>
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setIsRenameOpen(false)}>

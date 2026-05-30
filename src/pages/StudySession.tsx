@@ -4,11 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { CardService, type Card } from '../services/CardService';
 import { DeckService, type Deck } from '../services/DeckService';
 import { previewReview } from '../services/srsAlgorithm';
-import { getNewLimit } from '../lib/studyLimits';
+import { getNewLimit, getTypeAnswer } from '../lib/studyLimits';
+import { hasCloze } from '../lib/cloze';
+import { answersMatch, toPlainText } from '../lib/answer';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import {
   ArrowLeft,
   CheckCircle,
+  XCircle,
   Trophy,
   RotateCcw,
   Brain,
@@ -39,6 +43,10 @@ const StudySession: React.FC = () => {
   const [initialTotal, setInitialTotal] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
+  // "Type the answer" mode state, reset per card.
+  const [typed, setTyped] = useState('');
+  const [checked, setChecked] = useState(false);
+  const typeAnswerPref = deckId ? getTypeAnswer(deckId) : false;
 
   useEffect(() => {
     if (deckId) {
@@ -77,6 +85,12 @@ const StudySession: React.FC = () => {
     });
   }, [play]);
 
+  // Type-answer mode: lock in the typed answer and reveal the back.
+  const checkAnswer = useCallback(() => {
+    setChecked(true);
+    flip();
+  }, [flip]);
+
   const handleRate = async (quality: number) => {
     const currentCard = queue[0];
     if (!currentCard) return;
@@ -105,6 +119,8 @@ const StudySession: React.FC = () => {
         return rest;
       });
       setIsFlipped(false);
+      setTyped('');
+      setChecked(false);
     } catch (error) {
       console.error(error);
       toast({ title: t('study.saveError'), variant: 'destructive' });
@@ -139,9 +155,13 @@ const StudySession: React.FC = () => {
       const target = e.target as HTMLElement | null;
       if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))
         return;
-      if (!queue[0]) return;
+      const card = queue[0];
+      if (!card) return;
+      // In type-answer mode the back is revealed by submitting the input, not
+      // by Space/Enter, so don't shortcut-flip plain cards there.
+      const tMode = deckId ? getTypeAnswer(deckId) && !hasCloze(card.front) : false;
       if (!isFlipped) {
-        if (e.key === ' ' || e.key === 'Enter') {
+        if (!tMode && (e.key === ' ' || e.key === 'Enter')) {
           e.preventDefault();
           flip();
         }
@@ -217,6 +237,11 @@ const StudySession: React.FC = () => {
   const passed = initialTotal - queue.length;
   const progress = initialTotal > 0 ? (passed / initialTotal) * 100 : 0;
 
+  const isCloze = hasCloze(currentCard.front);
+  // Type-answer applies to plain cards only; cloze has its own reveal flow.
+  const typeMode = typeAnswerPref && !isCloze;
+  const answerCorrect = typeMode && checked ? answersMatch(typed, currentCard.back) : false;
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
@@ -273,12 +298,15 @@ const StudySession: React.FC = () => {
       {/* Flashcard */}
       <div
         role="button"
-        tabIndex={isFlipped ? -1 : 0}
+        tabIndex={isFlipped || typeMode ? -1 : 0}
         aria-label={t('study.showAnswer')}
-        className="group relative cursor-pointer rounded-3xl border border-border/60 bg-card/80 p-1 shadow-2xl transition-shadow duration-300 hover:shadow-primary/10 hover:shadow-[0_8px_40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        onClick={() => !isFlipped && flip()}
+        className={clsx(
+          'group relative rounded-3xl border border-border/60 bg-card/80 p-1 shadow-2xl transition-shadow duration-300 hover:shadow-primary/10 hover:shadow-[0_8px_40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          !typeMode && 'cursor-pointer',
+        )}
+        onClick={() => !isFlipped && !typeMode && flip()}
         onKeyDown={(e) => {
-          if (!isFlipped && (e.key === ' ' || e.key === 'Enter')) {
+          if (!typeMode && !isFlipped && (e.key === ' ' || e.key === 'Enter')) {
             e.preventDefault();
             flip();
           }
@@ -305,6 +333,7 @@ const StudySession: React.FC = () => {
                   ownerId={currentCard.ownerId}
                   className="rich-text text-xl sm:text-2xl font-semibold leading-relaxed"
                   autoplayFirst={!isFlipped}
+                  clozeMode={isCloze ? 'front' : undefined}
                 />
                 {currentCard.frontAudio && (
                   <div className="mt-4">
@@ -315,9 +344,11 @@ const StudySession: React.FC = () => {
                     />
                   </div>
                 )}
-                <span className="mt-10 inline-flex items-center gap-2 rounded-full bg-muted/50 px-4 py-1.5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
-                  {t('study.showAnswer')}
-                </span>
+                {!typeMode && (
+                  <span className="mt-10 inline-flex items-center gap-2 rounded-full bg-muted/50 px-4 py-1.5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                    {t('study.showAnswer')}
+                  </span>
+                )}
               </div>
               {/* Back */}
               <div
@@ -329,13 +360,34 @@ const StudySession: React.FC = () => {
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-primary">
                   {t('study.answerLabel')}
                 </span>
-                <RichContent
-                  key={`back-${currentCard.id}`}
-                  html={currentCard.back}
-                  ownerId={currentCard.ownerId}
-                  className="rich-text mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed"
-                  autoplayFirst={isFlipped}
-                />
+                {isCloze ? (
+                  <>
+                    <RichContent
+                      key={`cloze-back-${currentCard.id}`}
+                      html={currentCard.front}
+                      ownerId={currentCard.ownerId}
+                      className="rich-text mt-6 text-2xl sm:text-3xl font-bold leading-relaxed"
+                      autoplayFirst={isFlipped}
+                      clozeMode="back"
+                    />
+                    {currentCard.back && (
+                      <RichContent
+                        key={`cloze-notes-${currentCard.id}`}
+                        html={currentCard.back}
+                        ownerId={currentCard.ownerId}
+                        className="rich-text mt-4 text-base text-muted-foreground leading-relaxed"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <RichContent
+                    key={`back-${currentCard.id}`}
+                    html={currentCard.back}
+                    ownerId={currentCard.ownerId}
+                    className="rich-text mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed"
+                    autoplayFirst={isFlipped}
+                  />
+                )}
                 {currentCard.backAudio && (
                   <div className="mt-4">
                     <PlayAudioButton
@@ -350,6 +402,61 @@ const StudySession: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Type-answer input */}
+      {typeMode && (
+        <div className="space-y-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!checked && typed.trim()) checkAnswer();
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              disabled={checked}
+              autoFocus
+              placeholder={t('study.typeAnswerPlaceholder')}
+              aria-label={t('study.typeAnswerPlaceholder')}
+              className={clsx(
+                'rounded-xl',
+                checked &&
+                  (answerCorrect
+                    ? 'border-green-500 focus-visible:ring-green-500'
+                    : 'border-red-500 focus-visible:ring-red-500'),
+              )}
+            />
+            {!checked && (
+              <Button type="submit" disabled={!typed.trim()} className="rounded-xl">
+                {t('study.checkAnswer')}
+              </Button>
+            )}
+          </form>
+          {checked && (
+            <div
+              className={clsx(
+                'flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium',
+                answerCorrect
+                  ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400',
+              )}
+            >
+              {answerCorrect ? (
+                <CheckCircle className="h-4 w-4 shrink-0" />
+              ) : (
+                <XCircle className="h-4 w-4 shrink-0" />
+              )}
+              <span>
+                {answerCorrect
+                  ? t('study.answerCorrect')
+                  : t('study.answerIncorrect', { answer: toPlainText(currentCard.back) })}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Rating buttons */}
       {isFlipped && (

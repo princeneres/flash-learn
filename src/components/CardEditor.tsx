@@ -26,10 +26,12 @@ import {
   Redo2,
   Code,
   Quote,
+  SquareDashedBottom,
 } from 'lucide-react';
 import { MediaStorageService } from '../services/MediaStorageService';
 import { Button } from './ui/button';
 import { sanitizeRichHtml } from '../lib/sanitize';
+import { maxClozeIndex } from '../lib/cloze';
 import { downscaleImage, extensionFromType } from '../lib/image';
 import { parseMediaSrc } from '../lib/media';
 
@@ -133,8 +135,7 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
     autofocus: autoFocus,
     editorProps: {
       attributes: {
-        class:
-          'rich-text min-h-[120px] focus:outline-none px-3 py-2',
+        class: 'rich-text min-h-[120px] focus:outline-none px-3 py-2',
       },
       handlePaste: (_view, event) => {
         const handled = handleFiles(event.clipboardData?.files);
@@ -172,12 +173,16 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
       const oldRefs = removeExistingMediaNodes(editor, 'image');
       if (oldRefs.length > 0) {
         void MediaStorageService.deleteMany(
-          oldRefs.map((r) => ({ kind: 'image' as const, ref: r }))
+          oldRefs.map((r) => ({ kind: 'image' as const, ref: r })),
         );
       }
-      editor.chain().focus().setImage({ src: `media://${ref}`, alt: file.name }).run();
+      editor
+        .chain()
+        .focus()
+        .setImage({ src: `media://${ref}`, alt: file.name })
+        .run();
     },
-    [editor]
+    [editor],
   );
 
   const insertAudio = useCallback(
@@ -188,7 +193,7 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
       const oldRefs = removeExistingMediaNodes(editor, 'audio');
       if (oldRefs.length > 0) {
         void MediaStorageService.deleteMany(
-          oldRefs.map((r) => ({ kind: 'audio' as const, ref: r }))
+          oldRefs.map((r) => ({ kind: 'audio' as const, ref: r })),
         );
       }
       editor
@@ -200,13 +205,22 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
         })
         .run();
     },
-    [editor]
+    [editor],
   );
 
   useEffect(() => {
     insertImageRef.current = insertImage;
     insertAudioRef.current = insertAudio;
   }, [insertImage, insertAudio]);
+
+  const insertCloze = useCallback(() => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    const selected = editor.state.doc.textBetween(from, to, ' ').trim();
+    if (!selected) return; // nothing selected → nothing to hide
+    const next = maxClozeIndex(editor.getText()) + 1;
+    editor.chain().focus().insertContentAt({ from, to }, `{{c${next}::${selected}}}`).run();
+  }, [editor]);
 
   const promptLink = useCallback(() => {
     if (!editor) return;
@@ -222,8 +236,7 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
 
   if (!editor) return null;
 
-  const btn = (active: boolean) =>
-    `h-8 px-2 ${active ? 'bg-accent text-accent-foreground' : ''}`;
+  const btn = (active: boolean) => `h-8 px-2 ${active ? 'bg-accent text-accent-foreground' : ''}`;
 
   return (
     <div className="rounded-md border border-input bg-background">
@@ -307,6 +320,17 @@ export const CardEditor: React.FC<Props> = ({ value, onChange, placeholder, auto
           aria-label={t('cardEditor.code')}
         >
           <Code className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2"
+          onClick={insertCloze}
+          aria-label={t('cardEditor.cloze')}
+          title={t('cardEditor.clozeHint')}
+        >
+          <SquareDashedBottom className="h-4 w-4" />
         </Button>
         <Button
           type="button"
