@@ -373,6 +373,11 @@
     "themeLight": "Claro",
     "themeDark": "Escuro"
   },
+  "menu": {
+    "navigation": "Navegação",
+    "preferences": "Preferências",
+    "account": "Perfil e configurações"
+  },
   "cardEditor": {
     "bold": "Negrito",
     "italic": "Itálico",

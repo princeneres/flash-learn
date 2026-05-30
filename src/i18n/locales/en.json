@@ -373,6 +373,11 @@
     "themeLight": "Light",
     "themeDark": "Dark"
   },
+  "menu": {
+    "navigation": "Navigation",
+    "preferences": "Preferences",
+    "account": "Profile & settings"
+  },
   "cardEditor": {
     "bold": "Bold",
     "italic": "Italic",
