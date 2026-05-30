@@ -241,7 +241,9 @@
     "renameError": "Não foi possível renomear o deck.",
     "byAuthor": "por {{name}}",
     "favorite": "Adicionar aos favoritos",
-    "unfavorite": "Remover dos favoritos"
+    "unfavorite": "Remover dos favoritos",
+    "newLimitLabel": "Cartas novas por dia",
+    "newLimitHint": "Número máximo de cartas novas introduzidas por dia em cada sessão. As revisões nunca são limitadas."
   },
   "study": {
     "deckNotFound": "Deck não encontrado.",

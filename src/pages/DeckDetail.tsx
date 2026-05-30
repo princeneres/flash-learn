@@ -30,6 +30,7 @@ import { normalizeCategory } from '../lib/categories';
 import { getDeckVisual } from '../lib/deckVisuals';
 import { looksLikeHtml } from '../lib/sanitize';
 import { collectCardMediaRefs } from '../lib/media';
+import { getNewLimit, setNewLimit, MAX_NEW_LIMIT } from '../lib/studyLimits';
 import { cn } from '../lib/utils';
 import { Tag } from 'lucide-react';
 
@@ -61,6 +62,7 @@ const DeckDetail: React.FC = () => {
   const [renameValue, setRenameValue] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [editTags, setEditTags] = useState<string[]>([]);
+  const [editNewLimit, setEditNewLimit] = useState('');
   const [renaming, setRenaming] = useState(false);
 
   // Import state
@@ -174,6 +176,7 @@ const DeckDetail: React.FC = () => {
     setRenameValue(deck.title);
     setEditCategory(normalizeCategory(deck.category));
     setEditTags(deck.tags);
+    setEditNewLimit(String(getNewLimit(deck.id)));
     setIsRenameOpen(true);
   };
 
@@ -184,6 +187,11 @@ const DeckDetail: React.FC = () => {
       setIsRenameOpen(false);
       return;
     }
+    // Daily new-card limit lives client-side; persist it independently of the
+    // deck row so a limit-only change still takes effect.
+    const parsedLimit = Number.parseInt(editNewLimit, 10);
+    if (Number.isFinite(parsedLimit)) setNewLimit(deck.id, parsedLimit);
+
     const category = normalizeCategory(editCategory);
     const unchanged =
       title === deck.title &&
@@ -581,6 +589,21 @@ const DeckDetail: React.FC = () => {
                   {t('categories.tagsLabel')}
                 </label>
                 <TagInput id="edit-deck-tags" tags={editTags} onChange={setEditTags} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium" htmlFor="edit-deck-new-limit">
+                  {t('deckDetail.newLimitLabel')}
+                </label>
+                <Input
+                  id="edit-deck-new-limit"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={MAX_NEW_LIMIT}
+                  value={editNewLimit}
+                  onChange={(e) => setEditNewLimit(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{t('deckDetail.newLimitHint')}</p>
               </div>
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setIsRenameOpen(false)}>

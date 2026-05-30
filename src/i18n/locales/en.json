@@ -241,7 +241,9 @@
     "renameError": "Couldn't rename deck.",
     "byAuthor": "by {{name}}",
     "favorite": "Add to favorites",
-    "unfavorite": "Remove from favorites"
+    "unfavorite": "Remove from favorites",
+    "newLimitLabel": "New cards per day",
+    "newLimitHint": "Maximum number of new cards introduced per study session each day. Reviews are never capped."
   },
   "study": {
     "deckNotFound": "Deck not found.",
