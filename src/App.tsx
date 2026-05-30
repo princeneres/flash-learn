@@ -11,6 +11,8 @@ import StudySession from './pages/StudySession';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import PublicDecks from './pages/PublicDecks';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import { Toaster } from './components/ui/toaster';
 import { LoadingState } from './components/LoadingState';
 
@@ -35,6 +37,8 @@ function App() {
           <Route path="/" element={<RootRoute />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
           <Route element={<MainLayout />}>
             <Route
               path="/dashboard"

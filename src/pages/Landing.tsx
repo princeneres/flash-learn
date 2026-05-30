@@ -590,17 +590,34 @@ const Landing: React.FC = () => {
               · {t('landing.footerTagline')}
             </span>
           </div>
-          <p className="text-center sm:text-right">
-            © {currentYear} <span translate="no">Flash Learn</span> · {t('landing.footerRights')} ·{' '}
-            <a
-              href="https://github.com/princeneres"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              Prince Neres
-            </a>
-          </p>
+          <div className="flex flex-col items-center gap-3 sm:items-end">
+            <nav className="flex items-center gap-4">
+              <Link
+                to="/privacy"
+                className="font-medium underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              >
+                {t('landing.footerPrivacy')}
+              </Link>
+              <Link
+                to="/terms"
+                className="font-medium underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              >
+                {t('landing.footerTerms')}
+              </Link>
+            </nav>
+            <p className="text-center sm:text-right">
+              © {currentYear} <span translate="no">Flash Learn</span> · {t('landing.footerRights')}{' '}
+              ·{' '}
+              <a
+                href="https://github.com/princeneres"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-foreground underline-offset-4 hover:underline"
+              >
+                Prince Neres
+              </a>
+            </p>
+          </div>
         </div>
       </footer>
     </div>
