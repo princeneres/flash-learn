@@ -27,6 +27,7 @@ import { Badge } from '../components/ui/badge';
 import { CategorySelect } from '../components/CategorySelect';
 import { TagInput } from '../components/TagInput';
 import { normalizeCategory } from '../lib/categories';
+import { getDeckVisual } from '../lib/deckVisuals';
 import { looksLikeHtml } from '../lib/sanitize';
 import { collectCardMediaRefs } from '../lib/media';
 import { cn } from '../lib/utils';
@@ -375,6 +376,8 @@ const DeckDetail: React.FC = () => {
   );
   if (!deck) return null;
 
+  const visual = getDeckVisual(normalizeCategory(deck.category), deck.title);
+
   return (
     <div>
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
@@ -387,9 +390,17 @@ const DeckDetail: React.FC = () => {
             <ArrowLeft className="w-4 h-4" />
             <span className="sr-only">{t('common.back')}</span>
           </Button>
+          <span
+            className={cn(
+              'hidden h-14 w-14 shrink-0 items-center justify-center rounded-2xl shadow-inner sm:flex',
+              visual.tile,
+            )}
+          >
+            <visual.Icon className="h-6 w-6" aria-hidden />
+          </span>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold">{deck.title}</h1>
+              <h1 className="font-display text-3xl font-extrabold tracking-tight">{deck.title}</h1>
               {isOwner && (
                 <Button
                   variant="ghost"
@@ -433,7 +444,7 @@ const DeckDetail: React.FC = () => {
         {!isOwner && (
           <div className="self-start md:self-auto">
             <Button
-              variant={isFavorite ? 'default' : 'outline'}
+              variant={isFavorite ? 'warm' : 'outline'}
               onClick={toggleFavorite}
               disabled={favoritePending}
             >
@@ -452,7 +463,7 @@ const DeckDetail: React.FC = () => {
               <Download className="w-5 h-5 mr-2" />
               {exportingDeck ? t('deckDetail.exporting') : t('deckDetail.exportDeck')}
             </Button>
-            <Button onClick={openCreate} disabled={atLimit}>
+            <Button variant="warm" onClick={openCreate} disabled={atLimit}>
               <Plus className="w-5 h-5 mr-2" />
               {t('deckDetail.addCard')}
             </Button>
@@ -460,7 +471,7 @@ const DeckDetail: React.FC = () => {
         )}
       </div>
 
-      <div className="rounded-3xl border border-border/60 bg-card/80 shadow-2xl">
+      <div className="rounded-2xl border border-border/60 bg-card/80 shadow-elegant">
         <div className="border-b border-border/70 p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

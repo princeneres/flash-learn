@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   Plus,
-  Book,
   Trash2,
   Edit2,
   PlayCircle,
@@ -24,6 +23,7 @@ import { CategorySelect } from '../components/CategorySelect';
 import { TagInput } from '../components/TagInput';
 import { Badge } from '../components/ui/badge';
 import { collectCategories, normalizeCategory } from '../lib/categories';
+import { getDeckVisual } from '../lib/deckVisuals';
 import { DECK_CARD_LIMIT } from '../services/CardService';
 import type { ImportBundle } from '../services/DeckImportService';
 import { useAuth } from '../context/AuthContext';
@@ -389,7 +389,9 @@ const Dashboard: React.FC = () => {
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">{t('dashboard.title')}</h1>
+          <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-[2.75rem]">
+            {t('dashboard.title')}
+          </h1>
           {limits && (
             <p className="mt-2 text-xs text-muted-foreground tabular-nums">
               {t('dashboard.planUsage', {
@@ -414,7 +416,12 @@ const Dashboard: React.FC = () => {
             <Sparkles className="w-5 h-5 mr-2" />
             {t('ai.generate.button')}
           </Button>
-          <Button onClick={() => setIsModalOpen(true)} className="shadow-lg" disabled={atDeckLimit}>
+          <Button
+            variant="warm"
+            onClick={() => setIsModalOpen(true)}
+            className="shadow-lg"
+            disabled={atDeckLimit}
+          >
             <Plus className="w-5 h-5 mr-2" />
             {t('dashboard.createDeck')}
           </Button>
@@ -423,23 +430,46 @@ const Dashboard: React.FC = () => {
 
       {favoriteDecks.length > 0 && (
         <section className="mb-10 space-y-4">
-          <h2 className="flex items-center gap-2 text-xl font-semibold">
+          <h2 className="font-display flex items-center gap-2 text-2xl font-bold">
             <Star className="h-5 w-5 fill-current text-warm" aria-hidden />
             {t('dashboard.favoritesTitle')}
           </h2>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {favoriteDecks.map((deck) => {
               const category = normalizeCategory(deck.category);
+              const visual = getDeckVisual(category, deck.title);
               return (
-                <Card key={deck.id} className="border-warm/30 bg-card/80">
+                <Card
+                  key={deck.id}
+                  className="card-lift relative overflow-hidden border-warm/30 bg-card/80 hover:border-warm/60 hover:shadow-elegant"
+                >
+                  <span
+                    className={cn(
+                      'pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r to-transparent',
+                      visual.accent,
+                    )}
+                    aria-hidden
+                  />
                   <CardHeader className="flex flex-row items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <CardTitle className="truncate text-xl">{deck.title}</CardTitle>
-                      <CardDescription>
-                        {t('publicDecks.owner', {
-                          name: deck.ownerName || t('leaderboard.anonymous'),
-                        })}
-                      </CardDescription>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span
+                        className={cn(
+                          'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+                          visual.tile,
+                        )}
+                      >
+                        <visual.Icon className="h-5 w-5" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <CardTitle className="font-display truncate text-xl">
+                          {deck.title}
+                        </CardTitle>
+                        <CardDescription>
+                          {t('publicDecks.owner', {
+                            name: deck.ownerName || t('leaderboard.anonymous'),
+                          })}
+                        </CardDescription>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -476,7 +506,7 @@ const Dashboard: React.FC = () => {
                         </Button>
                       </Link>
                       <Link to={`/study/${deck.id}`} className="flex-1">
-                        <Button className="w-full">
+                        <Button variant="warm" className="w-full">
                           <PlayCircle className="w-4 h-4 mr-2" />
                           {t('dashboard.study')}
                         </Button>
@@ -491,19 +521,28 @@ const Dashboard: React.FC = () => {
       )}
 
       {favoriteDecks.length > 0 && (
-        <h2 className="mb-4 text-xl font-semibold">{t('dashboard.myDecksTitle')}</h2>
+        <h2 className="font-display mb-4 text-2xl font-bold">{t('dashboard.myDecksTitle')}</h2>
       )}
 
       {decks.length === 0 ? (
-        <Card className="glass-panel text-center py-12 border-dashed">
+        <Card className="relative overflow-hidden border-dashed bg-mesh py-14 text-center">
           <CardHeader>
-            <Book className="w-12 h-12 mx-auto text-primary" />
-            <CardTitle>{t('dashboard.noDecks')}</CardTitle>
-            <CardDescription>{t('dashboard.emptyHelper')}</CardDescription>
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-warm/15 text-warm shadow-inner">
+              <Sparkles className="h-7 w-7" aria-hidden />
+            </span>
+            <CardTitle className="font-display mt-2 text-2xl">{t('dashboard.noDecks')}</CardTitle>
+            <CardDescription className="mx-auto max-w-md">
+              {t('dashboard.emptyHelper')}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={() => setIsModalOpen(true)} disabled={atDeckLimit}>
+          <CardContent className="flex flex-wrap justify-center gap-2">
+            <Button variant="warm" onClick={() => setIsModalOpen(true)} disabled={atDeckLimit}>
+              <Plus className="mr-2 h-4 w-4" />
               {t('dashboard.createDeck')}
+            </Button>
+            <Button variant="outline" onClick={() => setIsAiOpen(true)} disabled={atDeckLimit}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              {t('ai.generate.button')}
             </Button>
           </CardContent>
         </Card>
@@ -529,7 +568,7 @@ const Dashboard: React.FC = () => {
                   className={cn(
                     'rounded-full border px-3 py-1 text-xs font-medium transition',
                     activeCategory === null
-                      ? 'border-primary bg-primary/10 text-primary'
+                      ? 'border-warm/60 bg-warm/10 text-warm-foreground dark:text-warm'
                       : 'border-border text-muted-foreground hover:bg-accent',
                   )}
                 >
@@ -543,7 +582,7 @@ const Dashboard: React.FC = () => {
                     className={cn(
                       'rounded-full border px-3 py-1 text-xs font-medium transition',
                       activeCategory === cat
-                        ? 'border-primary bg-primary/10 text-primary'
+                        ? 'border-warm/60 bg-warm/10 text-warm-foreground dark:text-warm'
                         : 'border-border text-muted-foreground hover:bg-accent',
                     )}
                   >
@@ -560,77 +599,92 @@ const Dashboard: React.FC = () => {
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredDecks.map((deck) => (
-                <Card
-                  key={deck.id}
-                  className="relative overflow-hidden border-border/50 bg-gradient-to-br from-background to-card/70 transition hover:-translate-y-1 hover:border-warm/60 hover:shadow-lg hover:shadow-warm/10"
-                >
-                  <CardHeader className="flex flex-row items-start justify-between">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary shadow-inner p-4">
-                      <Book className="h-5 w-5" aria-hidden />
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                        <span>
-                          {deck.isPublic ? t('visibility.public') : t('visibility.private')}
-                        </span>
-                        <Switch
-                          checked={deck.isPublic}
-                          onCheckedChange={() => handleToggleVisibility(deck)}
-                          disabled={visibilityLoading === deck.id}
-                          aria-label={t('visibility.fieldLabel')}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteDeck(deck.id)}
-                        className="rounded-full p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={t('dashboard.deleteDeckLabel', { title: deck.title })}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden />
-                      </button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <CardTitle className="text-2xl">{deck.title}</CardTitle>
-                      <CardDescription>
-                        {t('dashboard.cardCount', { count: deck.cardCount })}
-                      </CardDescription>
-                      {(normalizeCategory(deck.category) || deck.tags.length > 0) && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          {normalizeCategory(deck.category) && (
-                            <Badge variant="warm">{normalizeCategory(deck.category)}</Badge>
-                          )}
-                          {deck.tags.slice(0, 3).map((tag) => (
-                            <Badge key={tag} variant="secondary">
-                              <Tag className="h-3 w-3" aria-hidden />
-                              {tag}
-                            </Badge>
-                          ))}
-                          {deck.tags.length > 3 && (
-                            <Badge variant="outline">+{deck.tags.length - 3}</Badge>
-                          )}
-                        </div>
+              {filteredDecks.map((deck) => {
+                const visual = getDeckVisual(normalizeCategory(deck.category), deck.title);
+                return (
+                  <Card
+                    key={deck.id}
+                    className="card-lift relative overflow-hidden border-border/50 bg-gradient-to-br from-background to-card/70 hover:border-warm/60 hover:shadow-elegant"
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r to-transparent',
+                        visual.accent,
                       )}
-                    </div>
-                    <div className="flex gap-3">
-                      <Link to={`/deck/${deck.id}`} className="flex-1">
-                        <Button variant="outline" className="w-full">
-                          <Edit2 className="w-4 h-4 mr-2" />
-                          {t('common.edit')}
-                        </Button>
-                      </Link>
-                      <Link to={`/study/${deck.id}`} className="flex-1">
-                        <Button className="w-full">
-                          <PlayCircle className="w-4 h-4 mr-2" />
-                          {t('dashboard.study')}
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      aria-hidden
+                    />
+                    <CardHeader className="flex flex-row items-start justify-between">
+                      <div
+                        className={cn(
+                          'flex h-12 w-12 items-center justify-center rounded-2xl shadow-inner',
+                          visual.tile,
+                        )}
+                      >
+                        <visual.Icon className="h-5 w-5" aria-hidden />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                          <span>
+                            {deck.isPublic ? t('visibility.public') : t('visibility.private')}
+                          </span>
+                          <Switch
+                            checked={deck.isPublic}
+                            onCheckedChange={() => handleToggleVisibility(deck)}
+                            disabled={visibilityLoading === deck.id}
+                            aria-label={t('visibility.fieldLabel')}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDeck(deck.id)}
+                          className="rounded-full p-2 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={t('dashboard.deleteDeckLabel', { title: deck.title })}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-2">
+                        <CardTitle className="font-display text-2xl">{deck.title}</CardTitle>
+                        <CardDescription>
+                          {t('dashboard.cardCount', { count: deck.cardCount })}
+                        </CardDescription>
+                        {(normalizeCategory(deck.category) || deck.tags.length > 0) && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                            {normalizeCategory(deck.category) && (
+                              <Badge variant="warm">{normalizeCategory(deck.category)}</Badge>
+                            )}
+                            {deck.tags.slice(0, 3).map((tag) => (
+                              <Badge key={tag} variant="secondary">
+                                <Tag className="h-3 w-3" aria-hidden />
+                                {tag}
+                              </Badge>
+                            ))}
+                            {deck.tags.length > 3 && (
+                              <Badge variant="outline">+{deck.tags.length - 3}</Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        <Link to={`/deck/${deck.id}`} className="flex-1">
+                          <Button variant="outline" className="w-full">
+                            <Edit2 className="w-4 h-4 mr-2" />
+                            {t('common.edit')}
+                          </Button>
+                        </Link>
+                        <Link to={`/study/${deck.id}`} className="flex-1">
+                          <Button variant="warm" className="w-full">
+                            <PlayCircle className="w-4 h-4 mr-2" />
+                            {t('dashboard.study')}
+                          </Button>
+                        </Link>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

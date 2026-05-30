@@ -17,16 +17,18 @@ const levelFor = (count: number, max: number): number => {
   return 1;
 };
 
-const LEVEL_ALPHA = [0, 0.25, 0.45, 0.7, 1];
+const LEVEL_ALPHA = [0, 0.35, 0.58, 0.8, 1];
 
 export const StudyHeatmap: React.FC<{ byDay: DayStat[] }> = ({ byDay }) => {
   const { t, i18n } = useTranslation();
 
-  const { columns, max } = useMemo(() => {
+  const { columns, max, total, bestDay } = useMemo(() => {
     const map = new Map(byDay.map((d) => [d.date, d.total]));
     const today = startOfDay(new Date());
     const start = startOfWeek(subWeeks(today, WEEKS - 1), { weekStartsOn: 0 });
     let maxCount = 0;
+    let sum = 0;
+    let best: { date: string; count: number } | null = null;
     const cols: Array<Array<{ date: string; count: number; future: boolean }>> = [];
     for (let w = 0; w < WEEKS; w++) {
       const col: Array<{ date: string; count: number; future: boolean }> = [];
@@ -35,11 +37,15 @@ export const StudyHeatmap: React.FC<{ byDay: DayStat[] }> = ({ byDay }) => {
         const key = format(day, 'yyyy-MM-dd');
         const count = map.get(key) ?? 0;
         if (count > maxCount) maxCount = count;
+        if (day <= today) {
+          sum += count;
+          if (!best || count > best.count) best = { date: key, count };
+        }
         col.push({ date: key, count, future: day > today });
       }
       cols.push(col);
     }
-    return { columns: cols, max: maxCount };
+    return { columns: cols, max: maxCount, total: sum, bestDay: best };
   }, [byDay]);
 
   return (
@@ -65,7 +71,7 @@ export const StudyHeatmap: React.FC<{ byDay: DayStat[] }> = ({ byDay }) => {
                             month: 'short',
                           })} · ${t('stats.reviewsCount', { count: cell.count })}`
                     }
-                    className="h-3.5 w-3.5 rounded-[3px] border border-border/40"
+                    className="h-4 w-4 rounded-[4px] border border-border/40 transition-transform duration-150 hover:scale-125 hover:ring-2 hover:ring-warm/40"
                     style={{
                       backgroundColor: cell.future
                         ? 'transparent'
@@ -80,6 +86,22 @@ export const StudyHeatmap: React.FC<{ byDay: DayStat[] }> = ({ byDay }) => {
             </div>
           ))}
         </div>
+        {total > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 rounded-full bg-warm/10 px-2.5 py-1 font-medium text-warm-foreground dark:text-warm">
+              {t('stats.heatmapTotal', { count: total })}
+            </span>
+            {bestDay && bestDay.count > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted/40 px-2.5 py-1 font-medium text-muted-foreground">
+                {t('stats.heatmapBest', { count: bestDay.count })} ·{' '}
+                {new Date(bestDay.date).toLocaleDateString(i18n.language, {
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+            )}
+          </div>
+        )}
         <div className="mt-3 flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
           <span>{t('stats.less')}</span>
           {LEVEL_ALPHA.map((alpha, i) => (

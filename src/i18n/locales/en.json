@@ -315,7 +315,9 @@
     "less": "Less",
     "more": "More",
     "bestTimes": "When you study",
-    "bestTimesHint": "Reviews by hour of day"
+    "bestTimesHint": "Reviews by hour of day",
+    "heatmapTotal": "{{count}} reviews in 12 weeks",
+    "heatmapBest": "Best day: {{count}}"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -332,6 +334,8 @@
     "title": "Public Decks",
     "subtitle": "Browse decks shared by the community and start studying instantly.",
     "emptyState": "No public decks yet. Be the first to share!",
+    "resultCount_one": "{{count}} deck",
+    "resultCount_other": "{{count}} decks",
     "owner": "by {{name}}",
     "open": "Open deck",
     "study": "Study deck",
@@ -350,6 +354,8 @@
     "points": "Points",
     "reviews": "Reviews",
     "streak": "Day streak",
+    "achievements": "Achievements",
+    "noAchievements": "Keep studying to unlock your first badge.",
     "settings": "Settings",
     "personalization": "Personalization",
     "languageLabel": "Language",

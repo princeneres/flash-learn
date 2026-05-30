@@ -2,7 +2,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { User, Globe, Volume2, Camera, Loader2, Sun, Moon, Check } from 'lucide-react';
+import {
+  User,
+  Globe,
+  Volume2,
+  Camera,
+  Loader2,
+  Sun,
+  Moon,
+  Check,
+  Flame,
+  Layers3,
+  Trophy,
+} from 'lucide-react';
+import { cn } from '../lib/utils';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Switch } from '../components/ui/switch';
@@ -130,6 +143,18 @@ const Profile: React.FC = () => {
   const initial = userData?.displayName?.[0]?.toUpperCase();
   const nameChanged = nameDraft.trim().length > 0 && nameDraft.trim() !== userData?.displayName;
 
+  const points = userData?.points || 0;
+  const reviews = userData?.stats?.totalReviews || 0;
+  const streak = userData?.stats?.streak || 0;
+
+  // Earned milestone badges — highest tier reached per metric, so the row stays tidy.
+  const highest = (value: number, tiers: number[]) => tiers.filter((tier) => value >= tier).pop();
+  const achievements = [
+    { tier: highest(streak, [3, 7, 30, 100]), icon: Flame, label: t('profile.streak') },
+    { tier: highest(reviews, [50, 100, 500, 1000]), icon: Layers3, label: t('profile.reviews') },
+    { tier: highest(points, [100, 500, 1000, 5000]), icon: Trophy, label: t('profile.points') },
+  ].filter((a): a is { tier: number; icon: typeof Flame; label: string } => a.tier !== undefined);
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
       <Card className="border-border/60 bg-card/90">
@@ -139,7 +164,7 @@ const Profile: React.FC = () => {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingAvatar}
-              className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-3xl bg-primary/10 text-4xl font-bold text-primary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="font-display group relative h-24 w-24 shrink-0 overflow-hidden rounded-3xl bg-gradient-to-br from-primary/15 to-warm/15 text-4xl font-bold text-primary shadow-inner transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={t('profile.changeAvatar')}
             >
               {userData?.photoURL ? (
@@ -172,36 +197,85 @@ const Profile: React.FC = () => {
               <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
                 {t('auth.profile')}
               </p>
-              <h1 className="truncate text-3xl font-semibold">
+              <h1 className="font-display truncate text-4xl font-extrabold tracking-tight">
                 {userData?.displayName || t('profile.fallbackName')}
               </h1>
               <p className="text-muted-foreground">{currentUser?.email}</p>
+              {achievements.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {achievements.map((a) => (
+                    <span
+                      key={a.label}
+                      className="inline-flex items-center gap-1 rounded-full border border-warm/40 bg-warm/10 px-2.5 py-1 text-xs font-semibold text-warm-foreground dark:text-warm"
+                    >
+                      <a.icon className="h-3.5 w-3.5" aria-hidden />
+                      {a.tier}+ {a.label}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-border/60 bg-background/60 p-4 text-center">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                {t('profile.points')}
-              </p>
-              <p className="mt-2 text-3xl font-bold text-blue-500">{userData?.points || 0}</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-background/60 p-4 text-center">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                {t('profile.reviews')}
-              </p>
-              <p className="mt-2 text-3xl font-bold text-green-500">
-                {userData?.stats?.totalReviews || 0}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-background/60 p-4 text-center">
-              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                {t('profile.streak')}
-              </p>
-              <p className="mt-2 text-3xl font-bold text-yellow-500">
-                {userData?.stats?.streak || 0}
-              </p>
-            </div>
+            {[
+              {
+                label: t('profile.points'),
+                value: points,
+                icon: Trophy,
+                tile: 'bg-primary/10 text-primary',
+                accent: 'from-primary/60',
+                flame: false,
+              },
+              {
+                label: t('profile.reviews'),
+                value: reviews,
+                icon: Layers3,
+                tile: 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400',
+                accent: 'from-emerald-500/50',
+                flame: false,
+              },
+              {
+                label: t('profile.streak'),
+                value: streak,
+                icon: Flame,
+                tile: 'bg-warm/15 text-warm',
+                accent: 'from-warm/70',
+                flame: true,
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="relative overflow-hidden rounded-2xl border border-border/60 bg-background/60 p-5"
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r to-transparent',
+                    s.accent,
+                  )}
+                  aria-hidden
+                />
+                <div
+                  className={cn(
+                    'mb-3 flex h-10 w-10 items-center justify-center rounded-xl shadow-inner',
+                    s.tile,
+                  )}
+                >
+                  <s.icon className="h-5 w-5" aria-hidden />
+                </div>
+                <p
+                  className={cn(
+                    'font-display text-4xl font-extrabold tabular-nums leading-none',
+                    s.flame && 'flame-text',
+                  )}
+                >
+                  {s.value.toLocaleString()}
+                </p>
+                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  {s.label}
+                </p>
+              </div>
+            ))}
           </div>
 
           <div className="space-y-6">
@@ -209,7 +283,7 @@ const Profile: React.FC = () => {
               <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
                 {t('profile.settings')}
               </p>
-              <h2 className="text-2xl font-semibold">{t('profile.personalization')}</h2>
+              <h2 className="font-display text-2xl font-bold">{t('profile.personalization')}</h2>
             </div>
 
             <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/40 p-4">

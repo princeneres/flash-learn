@@ -78,8 +78,16 @@ const Stats: React.FC = () => {
           <p className="text-sm uppercase tracking-widest text-muted-foreground">
             {t('stats.eyebrow')}
           </p>
-          <h1 className="text-3xl font-bold">{t('stats.title')}</h1>
+          <h1 className="font-display text-4xl font-extrabold tracking-tight">
+            {t('stats.title')}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">{t('stats.subtitle')}</p>
+          {summary.hasData && summary.currentStreak > 0 && (
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-warm/40 bg-warm/10 px-3 py-1 text-xs font-semibold text-warm-foreground dark:text-warm">
+              <Flame className="h-3.5 w-3.5 fill-current" aria-hidden />
+              {t('stats.streakDays', { count: summary.currentStreak })}
+            </span>
+          )}
         </div>
         {categories.length > 0 && (
           <div className="w-full sm:w-56">
@@ -101,10 +109,12 @@ const Stats: React.FC = () => {
       </div>
 
       {!summary.hasData ? (
-        <Card className="border-dashed py-12 text-center">
+        <Card className="bg-mesh border-dashed py-14 text-center">
           <CardHeader>
-            <BarChart3 className="mx-auto h-12 w-12 text-primary" />
-            <CardTitle>{t('stats.empty')}</CardTitle>
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
+              <BarChart3 className="h-7 w-7" />
+            </span>
+            <CardTitle className="font-display mt-2 text-2xl">{t('stats.empty')}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">{t('stats.emptyHint')}</p>
@@ -128,6 +138,7 @@ const Stats: React.FC = () => {
               hint={t('stats.activeDays', { count: summary.studyDays })}
             />
             <StatCard
+              tone={accuracyPct >= 90 ? 'warm' : 'primary'}
               icon={<Target className="h-5 w-5" />}
               label={t('stats.accuracy')}
               value={`${accuracyPct}%`}

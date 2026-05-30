@@ -1,6 +1,7 @@
 import React from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LogOut, User as UserIcon } from 'lucide-react';
@@ -19,6 +20,15 @@ const MainLayout: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      'rounded-full px-3 py-1.5 transition',
+      isActive
+        ? 'bg-warm/15 font-semibold text-warm-foreground dark:text-warm'
+        : 'hover:bg-accent hover:text-accent-foreground',
+    );
 
   const handleLogout = async () => {
     try {
@@ -38,31 +48,19 @@ const MainLayout: React.FC = () => {
               <Link to="/dashboard" className="text-xl font-semibold tracking-tight">
                 <img src="/logo.png" alt="Flash Learn Logo" className="inline h-8 w-8" />
               </Link>
-              <div className="hidden items-center gap-3 text-sm font-medium text-muted-foreground md:flex">
-                <Link
-                  to="/dashboard"
-                  className="rounded-full px-3 py-1.5 text-foreground transition hover:bg-accent hover:text-accent-foreground"
-                >
+              <div className="hidden items-center gap-2 text-sm font-medium text-muted-foreground md:flex">
+                <NavLink to="/dashboard" className={navLinkClass}>
                   {t('dashboard.title')}
-                </Link>
-                <Link
-                  to="/stats"
-                  className="rounded-full px-3 py-1.5 transition hover:bg-accent hover:text-accent-foreground"
-                >
+                </NavLink>
+                <NavLink to="/stats" className={navLinkClass}>
                   {t('stats.navLabel')}
-                </Link>
-                <Link
-                  to="/leaderboard"
-                  className="rounded-full px-3 py-1.5 transition hover:bg-accent hover:text-accent-foreground"
-                >
+                </NavLink>
+                <NavLink to="/leaderboard" className={navLinkClass}>
                   {t('leaderboard.title')}
-                </Link>
-                <Link
-                  to="/public"
-                  className="rounded-full px-3 py-1.5 transition hover:bg-accent hover:text-accent-foreground"
-                >
+                </NavLink>
+                <NavLink to="/public" className={navLinkClass}>
                   {t('publicDecks.title')}
-                </Link>
+                </NavLink>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -109,7 +107,9 @@ const MainLayout: React.FC = () => {
           </div>
         </nav>
         <main className="mx-auto w-full max-w-6xl px-4 py-8">
-          <Outlet />
+          <div key={location.pathname} className="animate-fade-up">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
