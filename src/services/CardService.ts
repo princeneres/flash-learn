@@ -1,3 +1,4 @@
+import { startOfDay } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { calculateReview } from './srsAlgorithm';
 import { GamificationService } from './GamificationService';
@@ -124,15 +125,62 @@ export const CardService = {
     if (error) throw error;
   },
 
-  getDueCards: async (deckId: string): Promise<Card[]> => {
+  // How many brand-new cards have already been introduced today, counted from
+  // the review log (prev_status 'new' marks a card's first-ever review) so the
+  // tally survives reloads and several sessions across the same day.
+  countNewStudiedToday: async (deckId: string): Promise<number> => {
+    const since = startOfDay(new Date()).toISOString();
+    const { count, error } = await supabase
+      .from('review_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('deck_id', deckId)
+      .eq('prev_status', 'new')
+      .gte('reviewed_at', since);
+    if (error) {
+      // Non-fatal: fall back to "none studied" so the session still starts.
+      console.error('Failed to count new cards studied today', error);
+      return 0;
+    }
+    return count ?? 0;
+  },
+
+  // Due cards for a study session. Review/learning cards are always returned;
+  // brand-new cards are capped so at most `newLimit` are introduced per day
+  // (counting any already studied earlier today). Pass Infinity to disable the
+  // cap. Reviews come first, then the day's remaining allotment of new cards.
+  getDueCards: async (deckId: string, newLimit: number = Infinity): Promise<Card[]> => {
     const nowIso = new Date().toISOString();
-    const { data, error } = await supabase
+
+    const { data: reviewRows, error: reviewError } = await supabase
       .from(TABLE)
       .select('*')
       .eq('deck_id', deckId)
-      .lte('next_review', nowIso);
-    if (error) throw error;
-    return (data ?? []).map(fromDbCard);
+      .neq('status', 'new')
+      .lte('next_review', nowIso)
+      .order('next_review', { ascending: true });
+    if (reviewError) throw reviewError;
+    const reviewCards = (reviewRows ?? []).map(fromDbCard);
+
+    if (newLimit <= 0) return reviewCards;
+
+    const studiedNew = Number.isFinite(newLimit)
+      ? await CardService.countNewStudiedToday(deckId)
+      : 0;
+    const remainingNew = newLimit - studiedNew;
+    if (remainingNew <= 0) return reviewCards;
+
+    let newQuery = supabase
+      .from(TABLE)
+      .select('*')
+      .eq('deck_id', deckId)
+      .eq('status', 'new')
+      .lte('next_review', nowIso)
+      .order('created_at', { ascending: true });
+    if (Number.isFinite(remainingNew)) newQuery = newQuery.limit(remainingNew);
+    const { data: newRows, error: newError } = await newQuery;
+    if (newError) throw newError;
+
+    return [...reviewCards, ...(newRows ?? []).map(fromDbCard)];
   },
 
   processReview: async (card: Card, quality: number, deckCategory?: string) => {

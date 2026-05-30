@@ -241,7 +241,9 @@
     "renameError": "Não foi possível renomear o deck.",
     "byAuthor": "por {{name}}",
     "favorite": "Adicionar aos favoritos",
-    "unfavorite": "Remover dos favoritos"
+    "unfavorite": "Remover dos favoritos",
+    "newLimitLabel": "Cartas novas por dia",
+    "newLimitHint": "Número máximo de cartas novas introduzidas por dia em cada sessão. As revisões nunca são limitadas."
   },
   "study": {
     "deckNotFound": "Deck não encontrado.",
@@ -315,7 +317,9 @@
     "less": "Menos",
     "more": "Mais",
     "bestTimes": "Quando você estuda",
-    "bestTimesHint": "Revisões por hora do dia"
+    "bestTimesHint": "Revisões por hora do dia",
+    "heatmapTotal": "{{count}} revisões em 12 semanas",
+    "heatmapBest": "Melhor dia: {{count}}"
   },
   "leaderboard": {
     "title": "Ranking",
@@ -332,6 +336,8 @@
     "title": "Decks Públicos",
     "subtitle": "Explore decks compartilhados pela comunidade e comece a estudar na hora.",
     "emptyState": "Ainda não há decks públicos. Compartilhe o primeiro!",
+    "resultCount_one": "{{count}} deck",
+    "resultCount_other": "{{count}} decks",
     "owner": "por {{name}}",
     "open": "Abrir deck",
     "study": "Estudar deck",
@@ -350,6 +356,8 @@
     "points": "Pontos",
     "reviews": "Revisões",
     "streak": "Dias seguidos",
+    "achievements": "Conquistas",
+    "noAchievements": "Continue estudando para desbloquear sua primeira conquista.",
     "settings": "Configurações",
     "personalization": "Personalização",
     "languageLabel": "Idioma",
@@ -364,6 +372,11 @@
     "themeLabel": "Tema",
     "themeLight": "Claro",
     "themeDark": "Escuro"
+  },
+  "menu": {
+    "navigation": "Navegação",
+    "preferences": "Preferências",
+    "account": "Perfil e configurações"
   },
   "cardEditor": {
     "bold": "Negrito",

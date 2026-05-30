@@ -74,8 +74,8 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-family:
+      'Plus Jakarta Sans',
       'Inter',
-      'SF Pro Display',
       system-ui,
       -apple-system,
       BlinkMacSystemFont,
@@ -83,6 +83,13 @@
       sans-serif;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Display family — expressive headings & big "achievement" numbers. */
+  .font-display {
+    font-family: 'Bricolage Grotesque', 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -223,6 +230,52 @@
 
   .glow-ring:hover::before {
     opacity: 1;
+  }
+
+  /* Interactive surface lift — applied to clickable cards. */
+  .card-lift {
+    transition:
+      transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.25s ease;
+  }
+
+  .card-lift:hover {
+    transform: translateY(-4px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-lift:hover {
+      transform: none;
+    }
+  }
+
+  /* "Energy" gradient text — streaks, XP, the things worth celebrating. */
+  .flame-text {
+    background: linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #ef4444 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .text-gradient-warm {
+    background: linear-gradient(120deg, hsl(var(--warm)) 0%, #f97316 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Podium tier backgrounds for the leaderboard. */
+  .tier-gold {
+    background: linear-gradient(180deg, hsl(45 96% 55% / 0.22), hsl(45 96% 55% / 0.04));
+  }
+  .tier-silver {
+    background: linear-gradient(180deg, hsl(220 14% 65% / 0.22), hsl(220 14% 65% / 0.04));
+  }
+  .tier-bronze {
+    background: linear-gradient(180deg, hsl(28 70% 50% / 0.2), hsl(28 70% 50% / 0.04));
   }
 
   .rich-text h1,

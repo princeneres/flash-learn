@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { CardService, type Card } from '../services/CardService';
 import { DeckService, type Deck } from '../services/DeckService';
 import { previewReview } from '../services/srsAlgorithm';
+import { getNewLimit } from '../lib/studyLimits';
 import { Button } from '../components/ui/button';
 import {
   ArrowLeft,
@@ -49,7 +50,7 @@ const StudySession: React.FC = () => {
     try {
       const [deckData, cardsData] = await Promise.all([
         DeckService.getDeck(deckId!),
-        CardService.getDueCards(deckId!),
+        CardService.getDueCards(deckId!, getNewLimit(deckId!)),
       ]);
 
       if (!deckData) {

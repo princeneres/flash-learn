@@ -22,6 +22,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { cn } from '../lib/utils';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
@@ -339,14 +340,14 @@ const Landing: React.FC = () => {
         <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
           <div className="text-center lg:text-left">
             <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3.5 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span className="inline-flex items-center gap-2 rounded-full border border-warm/40 bg-warm/10 px-3.5 py-1.5 text-xs font-medium text-warm-foreground backdrop-blur dark:text-warm">
+                <Sparkles className="h-3.5 w-3.5 text-warm" />
                 {t('landing.badge')}
               </span>
             </Reveal>
 
             <Reveal delay={80}>
-              <h1 className="mt-6 text-balance text-[2.75rem] font-bold leading-[1.04] tracking-[-0.02em] sm:text-6xl">
+              <h1 className="font-display mt-6 text-balance text-[2.75rem] font-extrabold leading-[1.04] tracking-[-0.02em] sm:text-6xl">
                 {t('landing.heroTitleA')}
                 <br />
                 <span className="text-primary">{t('landing.heroTitleB')}</span>
@@ -364,7 +365,8 @@ const Landing: React.FC = () => {
                 <Button
                   onClick={goLogin}
                   size="lg"
-                  className="group h-12 w-full gap-2 px-7 text-base font-semibold shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 sm:w-auto"
+                  variant="warm"
+                  className="group h-12 w-full gap-2 px-7 text-base font-semibold shadow-lg shadow-warm/30 transition-all hover:shadow-xl hover:shadow-warm/40 sm:w-auto"
                 >
                   {t('landing.ctaPrimary')}
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -400,10 +402,10 @@ const Landing: React.FC = () => {
         {/* honest capability strip — replaces fabricated metrics */}
         <Reveal delay={360}>
           <dl className="mt-16 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 lg:grid-cols-4">
-            {capabilities.map(({ icon: Icon, value, label }) => (
+            {capabilities.map(({ icon: Icon, value, label }, i) => (
               <div key={label} className="flex flex-col gap-1.5 bg-card/70 p-5 backdrop-blur">
-                <Icon className="h-5 w-5 text-primary" />
-                <dt className="text-lg font-semibold tracking-tight">{value}</dt>
+                <Icon className={i % 2 === 1 ? 'h-5 w-5 text-warm' : 'h-5 w-5 text-primary'} />
+                <dt className="font-display text-xl font-bold tracking-tight">{value}</dt>
                 <dd className="text-sm text-muted-foreground">{label}</dd>
               </div>
             ))}
@@ -428,8 +430,13 @@ const Landing: React.FC = () => {
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map(({ icon: Icon, title, body }, i) => (
             <Reveal key={title} delay={(i % 3) * 70}>
-              <div className="group h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elegant">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
+              <div className="group h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-warm/40 hover:shadow-elegant">
+                <div
+                  className={cn(
+                    'inline-flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105',
+                    i % 2 === 1 ? 'bg-warm/15 text-warm' : 'bg-primary/10 text-primary',
+                  )}
+                >
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-5 text-base font-semibold tracking-tight">{title}</h3>
@@ -462,7 +469,7 @@ const Landing: React.FC = () => {
           {steps.map(({ title, body }, i) => (
             <Reveal key={title} delay={i * 90}>
               <div className="relative h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm">
+                <span className="font-display inline-flex h-9 w-9 items-center justify-center rounded-full bg-warm text-sm font-bold text-warm-foreground shadow-sm shadow-warm/30">
                   {i + 1}
                 </span>
                 <h3 className="mt-5 text-base font-semibold tracking-tight">{title}</h3>
@@ -480,7 +487,7 @@ const Landing: React.FC = () => {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
               {t('landing.aiEyebrow')}
             </p>
-            <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="font-display mt-3 text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
               {t('landing.aiTitle')}
             </h2>
             <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -529,8 +536,13 @@ const Landing: React.FC = () => {
         <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {useCases.map(({ icon: Icon, title, body }, i) => (
             <Reveal key={title} delay={(i % 4) * 70}>
-              <div className="group h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elegant">
-                <Icon className="h-6 w-6 text-primary transition-transform duration-300 group-hover:scale-105" />
+              <div className="group h-full rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-warm/40 hover:shadow-elegant">
+                <Icon
+                  className={cn(
+                    'h-6 w-6 transition-transform duration-300 group-hover:scale-105',
+                    i % 2 === 1 ? 'text-warm' : 'text-primary',
+                  )}
+                />
                 <h3 className="mt-5 text-base font-semibold tracking-tight">{title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
               </div>
@@ -559,7 +571,7 @@ const Landing: React.FC = () => {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-foreground/70">
                 {t('landing.finalCtaEyebrow')}
               </p>
-              <h2 className="mx-auto mt-4 max-w-2xl text-balance text-3xl font-bold tracking-tight sm:text-4xl">
+              <h2 className="font-display mx-auto mt-4 max-w-2xl text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
                 {t('landing.finalCtaTitle')}
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-primary-foreground/80 sm:text-lg">

@@ -241,7 +241,9 @@
     "renameError": "Couldn't rename deck.",
     "byAuthor": "by {{name}}",
     "favorite": "Add to favorites",
-    "unfavorite": "Remove from favorites"
+    "unfavorite": "Remove from favorites",
+    "newLimitLabel": "New cards per day",
+    "newLimitHint": "Maximum number of new cards introduced per study session each day. Reviews are never capped."
   },
   "study": {
     "deckNotFound": "Deck not found.",
@@ -315,7 +317,9 @@
     "less": "Less",
     "more": "More",
     "bestTimes": "When you study",
-    "bestTimesHint": "Reviews by hour of day"
+    "bestTimesHint": "Reviews by hour of day",
+    "heatmapTotal": "{{count}} reviews in 12 weeks",
+    "heatmapBest": "Best day: {{count}}"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -332,6 +336,8 @@
     "title": "Public Decks",
     "subtitle": "Browse decks shared by the community and start studying instantly.",
     "emptyState": "No public decks yet. Be the first to share!",
+    "resultCount_one": "{{count}} deck",
+    "resultCount_other": "{{count}} decks",
     "owner": "by {{name}}",
     "open": "Open deck",
     "study": "Study deck",
@@ -350,6 +356,8 @@
     "points": "Points",
     "reviews": "Reviews",
     "streak": "Day streak",
+    "achievements": "Achievements",
+    "noAchievements": "Keep studying to unlock your first badge.",
     "settings": "Settings",
     "personalization": "Personalization",
     "languageLabel": "Language",
@@ -364,6 +372,11 @@
     "themeLabel": "Theme",
     "themeLight": "Light",
     "themeDark": "Dark"
+  },
+  "menu": {
+    "navigation": "Navigation",
+    "preferences": "Preferences",
+    "account": "Profile & settings"
   },
   "cardEditor": {
     "bold": "Bold",
