@@ -8,6 +8,10 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import DeckDetail from './pages/DeckDetail';
 import StudySession from './pages/StudySession';
+import Collections from './pages/Collections';
+import CollectionDetail from './pages/CollectionDetail';
+import QuizEditor from './pages/QuizEditor';
+import QuizSession from './pages/QuizSession';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import PublicDecks from './pages/PublicDecks';
@@ -61,6 +65,38 @@ function App() {
               element={
                 <PrivateRoute>
                   <StudySession />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/collections"
+              element={
+                <PrivateRoute>
+                  <Collections />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/collection/:collectionId"
+              element={
+                <PrivateRoute>
+                  <CollectionDetail />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/quiz/:quizId"
+              element={
+                <PrivateRoute>
+                  <QuizSession />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/quiz/:quizId/edit"
+              element={
+                <PrivateRoute>
+                  <QuizEditor />
                 </PrivateRoute>
               }
             />

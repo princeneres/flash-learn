@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import {
   BarChart3,
   Globe,
+  Layers,
   LayoutDashboard,
   Lightbulb,
   LogOut,
@@ -53,6 +54,7 @@ const MainLayout: React.FC = () => {
 
   const navItems = [
     { to: '/dashboard', label: t('dashboard.title'), icon: LayoutDashboard },
+    { to: '/collections', label: t('collections.navLabel'), icon: Layers },
     { to: '/public', label: t('publicDecks.title'), icon: Globe },
     { to: '/stats', label: t('stats.navLabel'), icon: BarChart3 },
     { to: '/leaderboard', label: t('leaderboard.title'), icon: Trophy },
