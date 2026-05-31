@@ -14,7 +14,18 @@
     "db:pull": "supabase db pull",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --linked > src/types/database.ts",
-    "db:sync": "bash scripts/db-sync.sh"
+    "db:sync": "bash scripts/db-sync.sh",
+    "fn:deploy": "supabase functions deploy",
+    "secrets:list": "supabase secrets list",
+    "secrets:set": "supabase secrets set",
+    "env:list": "vercel env ls",
+    "env:add": "vercel env add",
+    "env:rm": "vercel env rm",
+    "env:pull": "vercel env pull .env.local",
+    "deploy": "vercel deploy --prod",
+    "deploy:preview": "vercel deploy",
+    "deploy:logs": "vercel logs",
+    "deploy:watch": "bash scripts/deploy-watch.sh"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.1",
@@ -64,6 +75,7 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
+    "vercel": "^54.6.1",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
     "workbox-window": "^7.4.0"
