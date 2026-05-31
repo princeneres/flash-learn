@@ -250,6 +250,52 @@
     }
   }
 
+  /* Playing-card fan — on card hover the deck's icon tile tilts and two
+     ghost cards spread out behind it like a hand being fanned open. */
+  .deck-tile {
+    position: relative;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .deck-tile::before,
+  .deck-tile::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: inherit;
+    box-shadow: inherit;
+    opacity: 0;
+    z-index: -1;
+    transform-origin: bottom right;
+    transition:
+      transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.35s ease;
+  }
+
+  .card-lift:hover .deck-tile {
+    transform: translateY(-2px) rotate(-5deg);
+  }
+
+  .card-lift:hover .deck-tile::before {
+    opacity: 0.6;
+    transform: translate(7px, -3px) rotate(11deg);
+  }
+
+  .card-lift:hover .deck-tile::after {
+    opacity: 0.35;
+    transform: translate(13px, -7px) rotate(22deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-lift:hover .deck-tile,
+    .card-lift:hover .deck-tile::before,
+    .card-lift:hover .deck-tile::after {
+      transform: none;
+      opacity: 0;
+    }
+  }
+
   /* "Energy" gradient text — streaks, XP, the things worth celebrating. */
   .flame-text {
     background: linear-gradient(135deg, #fbbf24 0%, #f97316 55%, #ef4444 100%);
