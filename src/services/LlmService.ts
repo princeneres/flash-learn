@@ -33,6 +33,7 @@ export type LlmErrorCode =
   | 'RATE_LIMIT'
   | 'NETWORK'
   | 'BAD_RESPONSE'
+  | 'TRUNCATED'
   | 'EMPTY'
   | 'UNKNOWN';
 
@@ -110,7 +111,7 @@ const coerceCards = (input: unknown): GeneratedCard[] => {
   const arr = Array.isArray(input)
     ? input
     : input && typeof input === 'object' && Array.isArray((input as { cards?: unknown }).cards)
-      ? ((input as { cards: unknown[] }).cards)
+      ? (input as { cards: unknown[] }).cards
       : null;
   if (!arr) throw new LlmError('BAD_RESPONSE');
 
@@ -145,7 +146,7 @@ const doFetch = async (url: string, init: RequestInit): Promise<Response> => {
 const callAnthropic = async (
   cfg: LlmConfig,
   prompt: string,
-  maxTokens: number
+  maxTokens: number,
 ): Promise<unknown> => {
   const res = await doFetch(`${trimSlash(cfg.baseUrl)}/v1/messages`, {
     method: 'POST',
@@ -172,20 +173,16 @@ const callAnthropic = async (
   if (!res.ok) throw new LlmError(httpErrorCode(res.status), `Anthropic ${res.status}`);
 
   const data = (await res.json()) as {
+    stop_reason?: string;
     content?: Array<{ type?: string; name?: string; input?: unknown }>;
   };
-  const toolBlock = data.content?.find(
-    (b) => b.type === 'tool_use' && b.name === TOOL_NAME
-  );
+  if (data.stop_reason === 'max_tokens') throw new LlmError('TRUNCATED');
+  const toolBlock = data.content?.find((b) => b.type === 'tool_use' && b.name === TOOL_NAME);
   if (!toolBlock) throw new LlmError('BAD_RESPONSE');
   return toolBlock.input;
 };
 
-const callOpenAi = async (
-  cfg: LlmConfig,
-  prompt: string,
-  maxTokens: number
-): Promise<unknown> => {
+const callOpenAi = async (cfg: LlmConfig, prompt: string, maxTokens: number): Promise<unknown> => {
   const res = await doFetch(`${trimSlash(cfg.baseUrl)}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -210,10 +207,15 @@ const callOpenAi = async (
   if (!res.ok) throw new LlmError(httpErrorCode(res.status), `OpenAI ${res.status}`);
 
   const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{ finish_reason?: string; message?: { content?: string } }>;
   };
-  const content = data.choices?.[0]?.message?.content;
+  const choice = data.choices?.[0];
+  const content = choice?.message?.content;
   if (!content) throw new LlmError('BAD_RESPONSE');
+  // Response cut off before the JSON could close — the token budget ran out
+  // (often eaten by a reasoning model's thinking tokens). Asking for fewer
+  // cards or a model with a larger output window resolves it.
+  if (choice?.finish_reason === 'length') throw new LlmError('TRUNCATED');
   try {
     return JSON.parse(content);
   } catch {
@@ -298,7 +300,16 @@ export const LlmService = {
     const count = Math.max(1, Math.min(opts.count, MAX_CARDS_PER_GENERATION));
     const prompt = buildPrompt({ ...opts, count });
     // Roughly budget tokens by card count, with generous headroom.
-    const maxTokens = Math.min(8192, 400 + count * 160);
+    // Budget for the JSON answer. OpenAI-compatible reasoning models
+    // (e.g. gemini-2.5-flash, o-series) spend "thinking" tokens out of the same
+    // max_tokens budget without them showing up in the content, so the answer
+    // gets truncated (finish_reason: "length") unless we leave generous
+    // headroom on that path.
+    const answerTokens = 600 + count * 200;
+    const maxTokens =
+      cfg.provider === 'anthropic'
+        ? Math.min(8192, answerTokens)
+        : Math.min(32768, answerTokens + 4000);
 
     const raw =
       cfg.provider === 'anthropic'

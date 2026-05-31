@@ -78,6 +78,7 @@
       "RATE_LIMIT": "Limite de requisições atingido. Aguarde um instante e tente de novo.",
       "NETWORK": "Erro de rede verifique sua conexão, a URL base e se o provedor permite requisições do navegador.",
       "BAD_RESPONSE": "O modelo retornou uma resposta inesperada. Tente novamente.",
+      "TRUNCATED": "A resposta foi cortada antes de terminar. Gere menos cartas ou escolha um modelo com limite de saída maior.",
       "EMPTY": "O modelo não retornou cartas utilizáveis. Refine o tema e tente de novo.",
       "UNKNOWN": "Algo deu errado ao falar com o provedor de IA."
     }

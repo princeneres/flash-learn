@@ -78,6 +78,7 @@
       "RATE_LIMIT": "Rate limit reached. Wait a moment and try again.",
       "NETWORK": "Network error check your connection, base URL, and that the provider allows browser requests.",
       "BAD_RESPONSE": "The model returned an unexpected response. Try again.",
+      "TRUNCATED": "The response was cut off before finishing. Try generating fewer cards, or pick a model with a larger output limit.",
       "EMPTY": "The model returned no usable cards. Refine your topic and try again.",
       "UNKNOWN": "Something went wrong talking to the AI provider."
     }
