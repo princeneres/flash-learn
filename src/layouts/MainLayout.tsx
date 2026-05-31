@@ -8,6 +8,7 @@ import {
   BarChart3,
   Globe,
   LayoutDashboard,
+  Lightbulb,
   LogOut,
   Moon,
   Settings,
@@ -27,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import { InstallAppButton } from '../components/InstallAppButton';
+import { FeatureSuggestionDialog } from '../components/FeatureSuggestionDialog';
 import { useTheme } from '../components/theme-provider';
 import { useSound } from '../hooks/useSound';
 
@@ -37,6 +39,7 @@ const MainLayout: React.FC = () => {
   const { enabled: soundEnabled, toggle: toggleSound } = useSound();
   const navigate = useNavigate();
   const location = useLocation();
+  const [suggestionOpen, setSuggestionOpen] = React.useState(false);
 
   const displayName =
     (currentUser?.user_metadata?.full_name as string | undefined) ||
@@ -154,6 +157,10 @@ const MainLayout: React.FC = () => {
                         {t('menu.account')}
                       </Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSuggestionOpen(true)}>
+                      <Lightbulb className="mr-2 h-4 w-4 text-muted-foreground" />
+                      {t('suggestion.menuItem')}
+                    </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={handleLogout}
                       className="text-destructive focus:text-destructive"
@@ -177,6 +184,7 @@ const MainLayout: React.FC = () => {
           </div>
         </main>
       </div>
+      <FeatureSuggestionDialog open={suggestionOpen} onOpenChange={setSuggestionOpen} />
     </div>
   );
 };

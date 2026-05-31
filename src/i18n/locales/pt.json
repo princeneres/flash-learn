@@ -385,6 +385,24 @@
     "preferences": "Preferências",
     "account": "Perfil e configurações"
   },
+  "suggestion": {
+    "menuItem": "Sugerir uma melhoria",
+    "title": "Sugerir uma melhoria",
+    "description": "Tem uma ideia para deixar o Flash Learn melhor? Conte pra gente — sua sugestão vai direto para a equipe.",
+    "categoryLabel": "Tipo",
+    "category": {
+      "feature": "Nova funcionalidade",
+      "improvement": "Melhoria de algo existente",
+      "bug": "Relatar um problema",
+      "other": "Outro"
+    },
+    "messageLabel": "Sua sugestão",
+    "messagePlaceholder": "Descreva sua ideia com o máximo de detalhes possível...",
+    "send": "Enviar sugestão",
+    "sending": "Enviando...",
+    "success": "Obrigado! Sua sugestão foi enviada.",
+    "error": "Não foi possível enviar a sugestão. Tente novamente."
+  },
   "cardEditor": {
     "bold": "Negrito",
     "italic": "Itálico",

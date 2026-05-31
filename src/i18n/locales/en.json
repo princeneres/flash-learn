@@ -385,6 +385,24 @@
     "preferences": "Preferences",
     "account": "Profile & settings"
   },
+  "suggestion": {
+    "menuItem": "Suggest an improvement",
+    "title": "Suggest an improvement",
+    "description": "Got an idea to make Flash Learn better? Tell us — your suggestion goes straight to the team.",
+    "categoryLabel": "Type",
+    "category": {
+      "feature": "New feature",
+      "improvement": "Improve something existing",
+      "bug": "Report a problem",
+      "other": "Other"
+    },
+    "messageLabel": "Your suggestion",
+    "messagePlaceholder": "Describe your idea in as much detail as possible...",
+    "send": "Send suggestion",
+    "sending": "Sending...",
+    "success": "Thank you! Your suggestion has been sent.",
+    "error": "Could not send the suggestion. Please try again."
+  },
   "cardEditor": {
     "bold": "Bold",
     "italic": "Italic",
