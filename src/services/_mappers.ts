@@ -1,5 +1,6 @@
 import type { Deck } from './DeckService';
 import type { Card } from './CardService';
+import { normalizeSrsSettings, type SrsSettings } from './srsAlgorithm';
 
 export interface DbDeck {
   id: string;
@@ -12,6 +13,7 @@ export interface DbDeck {
   is_public: boolean;
   card_count: number;
   created_at: string;
+  srs_settings?: Partial<SrsSettings> | null;
 }
 
 interface DbCard {
@@ -41,6 +43,7 @@ export const fromDbDeck = (r: DbDeck): Deck => ({
   isPublic: r.is_public,
   cardCount: r.card_count,
   createdAt: r.created_at,
+  srsSettings: normalizeSrsSettings(r.srs_settings),
 });
 
 export const toDbDeck = (
@@ -51,6 +54,7 @@ export const toDbDeck = (
   category: d.category ?? null,
   tags: d.tags ?? [],
   is_public: d.isPublic ?? false,
+  ...(d.srsSettings ? { srs_settings: d.srsSettings } : {}),
 });
 
 export const fromDbCard = (r: DbCard): Card => ({

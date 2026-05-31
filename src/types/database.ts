@@ -182,6 +182,7 @@ export type Database = {
           id: string
           is_public: boolean
           owner_id: string
+          srs_settings: Json
           tags: string[]
           title: string
         }
@@ -192,6 +193,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           owner_id: string
+          srs_settings?: Json
           tags?: string[]
           title: string
         }
@@ -202,6 +204,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           owner_id?: string
+          srs_settings?: Json
           tags?: string[]
           title?: string
         }
@@ -380,6 +383,7 @@ export type Database = {
           is_public: boolean
           owner_id: string
           owner_name: string
+          srs_settings: Json
           tags: string[]
           title: string
         }[]
@@ -420,6 +424,7 @@ export type Database = {
           is_public: boolean
           owner_id: string
           owner_name: string
+          srs_settings: Json
           tags: string[]
           title: string
         }[]

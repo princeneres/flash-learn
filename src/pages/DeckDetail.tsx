@@ -40,6 +40,21 @@ import {
 import { Switch } from '../components/ui/switch';
 import { cn } from '../lib/utils';
 import { Tag } from 'lucide-react';
+import {
+  DEFAULT_SRS_SETTINGS,
+  normalizeSrsSettings,
+  type SrsSettings,
+} from '../services/srsAlgorithm';
+
+// The SRS form keeps step lists as raw strings ("1, 10") and the rest as the
+// normalized numeric settings; parseStepList turns the strings back into arrays.
+const parseStepList = (raw: string, fallback: number[]): number[] => {
+  const parsed = raw
+    .split(/[\s,]+/)
+    .map((s) => Number(s))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return parsed.length > 0 ? parsed : fallback;
+};
 
 const DeckDetail: React.FC = () => {
   const { deckId } = useParams<{ deckId: string }>();
@@ -72,6 +87,12 @@ const DeckDetail: React.FC = () => {
   const [editNewLimit, setEditNewLimit] = useState('');
   const [editTypeAnswer, setEditTypeAnswer] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  // Per-deck SRS tunables. Numeric fields live in editSrs; the step lists are
+  // edited as free text and parsed on save.
+  const [showSrs, setShowSrs] = useState(false);
+  const [editSrs, setEditSrs] = useState<SrsSettings>(DEFAULT_SRS_SETTINGS);
+  const [editLearningSteps, setEditLearningSteps] = useState('');
+  const [editRelearningSteps, setEditRelearningSteps] = useState('');
 
   // Import state
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -186,6 +207,11 @@ const DeckDetail: React.FC = () => {
     setEditTags(deck.tags);
     setEditNewLimit(String(getNewLimit(deck.id)));
     setEditTypeAnswer(getTypeAnswer(deck.id));
+    const srs = normalizeSrsSettings(deck.srsSettings);
+    setEditSrs(srs);
+    setEditLearningSteps(srs.learningStepsMin.join(', '));
+    setEditRelearningSteps(srs.relearningStepsMin.join(', '));
+    setShowSrs(false);
     setIsRenameOpen(true);
   };
 
@@ -203,18 +229,28 @@ const DeckDetail: React.FC = () => {
     setTypeAnswer(deck.id, editTypeAnswer);
 
     const category = normalizeCategory(editCategory);
+    const srsSettings = normalizeSrsSettings({
+      ...editSrs,
+      learningStepsMin: parseStepList(editLearningSteps, DEFAULT_SRS_SETTINGS.learningStepsMin),
+      relearningStepsMin: parseStepList(
+        editRelearningSteps,
+        DEFAULT_SRS_SETTINGS.relearningStepsMin,
+      ),
+    });
+    const srsChanged = JSON.stringify(srsSettings) !== JSON.stringify(deck.srsSettings);
     const unchanged =
       title === deck.title &&
       category === normalizeCategory(deck.category) &&
-      JSON.stringify(editTags) === JSON.stringify(deck.tags);
+      JSON.stringify(editTags) === JSON.stringify(deck.tags) &&
+      !srsChanged;
     if (unchanged) {
       setIsRenameOpen(false);
       return;
     }
     setRenaming(true);
     try {
-      await DeckService.updateDeck(deck.id, { title, category, tags: editTags });
-      setDeck({ ...deck, title, category, tags: editTags });
+      await DeckService.updateDeck(deck.id, { title, category, tags: editTags, srsSettings });
+      setDeck({ ...deck, title, category, tags: editTags, srsSettings });
       toast({ title: t('deckDetail.renameSuccess') });
       setIsRenameOpen(false);
     } catch (error) {
@@ -628,6 +664,75 @@ const DeckDetail: React.FC = () => {
                   onCheckedChange={setEditTypeAnswer}
                 />
               </div>
+
+              <div className="rounded-md border border-border">
+                <button
+                  type="button"
+                  onClick={() => setShowSrs((v) => !v)}
+                  className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium"
+                >
+                  <span>{t('deckDetail.srs.title')}</span>
+                  <span className="text-muted-foreground">{showSrs ? '−' : '+'}</span>
+                </button>
+                {showSrs && (
+                  <div className="space-y-3 border-t border-border px-3 py-3">
+                    <p className="text-xs text-muted-foreground">{t('deckDetail.srs.hint')}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2 space-y-1">
+                        <label className="text-xs font-medium" htmlFor="srs-learning-steps">
+                          {t('deckDetail.srs.learningSteps')}
+                        </label>
+                        <Input
+                          id="srs-learning-steps"
+                          value={editLearningSteps}
+                          onChange={(e) => setEditLearningSteps(e.target.value)}
+                          placeholder="1, 10"
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <label className="text-xs font-medium" htmlFor="srs-relearning-steps">
+                          {t('deckDetail.srs.relearningSteps')}
+                        </label>
+                        <Input
+                          id="srs-relearning-steps"
+                          value={editRelearningSteps}
+                          onChange={(e) => setEditRelearningSteps(e.target.value)}
+                          placeholder="10"
+                        />
+                      </div>
+                      {(
+                        [
+                          ['graduatingIntervalDays', 'graduatingInterval', 1],
+                          ['easyIntervalDays', 'easyInterval', 1],
+                          ['defaultEase', 'startingEase', 0.1],
+                          ['hardIntervalFactor', 'hardFactor', 0.05],
+                          ['easyIntervalBonus', 'easyBonus', 0.05],
+                          ['maximumIntervalDays', 'maxInterval', 1],
+                        ] as const
+                      ).map(([key, label, step]) => (
+                        <div key={key} className="space-y-1">
+                          <label className="text-xs font-medium" htmlFor={`srs-${key}`}>
+                            {t(`deckDetail.srs.${label}`)}
+                          </label>
+                          <Input
+                            id={`srs-${key}`}
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step={step}
+                            value={String(editSrs[key])}
+                            onChange={(e) => {
+                              const n = Number(e.target.value);
+                              if (Number.isFinite(n)) setEditSrs((prev) => ({ ...prev, [key]: n }));
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setIsRenameOpen(false)}>
                   {t('common.cancel')}

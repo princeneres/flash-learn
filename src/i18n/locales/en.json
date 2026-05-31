@@ -270,7 +270,19 @@
     "newLimitLabel": "New cards per day",
     "newLimitHint": "Maximum number of new cards introduced per study session each day. Reviews are never capped.",
     "typeAnswerLabel": "Type the answer",
-    "typeAnswerHint": "Prompt yourself to type the answer before revealing it. Cloze cards are unaffected."
+    "typeAnswerHint": "Prompt yourself to type the answer before revealing it. Cloze cards are unaffected.",
+    "srs": {
+      "title": "Spaced repetition (advanced)",
+      "hint": "Controls how the Again/Hard/Good/Easy intervals are calculated for this deck. Leave the defaults if unsure.",
+      "learningSteps": "Learning steps (minutes)",
+      "relearningSteps": "Relearning steps (minutes)",
+      "graduatingInterval": "Graduating interval (days)",
+      "easyInterval": "Easy interval (days)",
+      "startingEase": "Starting ease",
+      "hardFactor": "Hard interval factor",
+      "easyBonus": "Easy bonus",
+      "maxInterval": "Maximum interval (days)"
+    }
   },
   "study": {
     "deckNotFound": "Deck not found.",

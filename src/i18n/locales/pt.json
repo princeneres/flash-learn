@@ -270,7 +270,19 @@
     "newLimitLabel": "Cartas novas por dia",
     "newLimitHint": "Número máximo de cartas novas introduzidas por dia em cada sessão. As revisões nunca são limitadas.",
     "typeAnswerLabel": "Digitar a resposta",
-    "typeAnswerHint": "Peça para você digitar a resposta antes de revelá-la. Não afeta cartas com lacunas."
+    "typeAnswerHint": "Peça para você digitar a resposta antes de revelá-la. Não afeta cartas com lacunas.",
+    "srs": {
+      "title": "Repetição espaçada (avançado)",
+      "hint": "Controla como os intervalos de Novamente/Difícil/Bom/Fácil são calculados neste baralho. Mantenha os padrões se tiver dúvida.",
+      "learningSteps": "Passos de aprendizado (minutos)",
+      "relearningSteps": "Passos de reaprendizado (minutos)",
+      "graduatingInterval": "Intervalo de formatura (dias)",
+      "easyInterval": "Intervalo do Fácil (dias)",
+      "startingEase": "Facilidade inicial",
+      "hardFactor": "Fator do Difícil",
+      "easyBonus": "Bônus do Fácil",
+      "maxInterval": "Intervalo máximo (dias)"
+    }
   },
   "study": {
     "deckNotFound": "Deck não encontrado.",

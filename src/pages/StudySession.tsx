@@ -96,7 +96,12 @@ const StudySession: React.FC = () => {
     if (!currentCard) return;
     play(quality < 3 ? 'again' : quality >= 5 ? 'easy' : 'good');
     try {
-      const result = await CardService.processReview(currentCard, quality, deck?.category);
+      const result = await CardService.processReview(
+        currentCard,
+        quality,
+        deck?.category,
+        deck?.srsSettings,
+      );
       setQueue((prev) => {
         const [, ...rest] = prev;
         // A card stays in this session's queue while it's still walking through
@@ -128,7 +133,7 @@ const StudySession: React.FC = () => {
   };
 
   const intervalLabel = (card: Card, quality: number): string => {
-    const result = previewReview(quality, card);
+    const result = previewReview(quality, card, deck?.srsSettings);
     if (result.status === 'learning' || result.status === 'relearning') {
       const minutes = Math.max(1, Math.round((result.nextReview.getTime() - Date.now()) / 60000));
       return t('study.intervalMinutes', { count: minutes });
