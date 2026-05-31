@@ -52,7 +52,7 @@ Variáveis de ambiente necessárias:
 
 - `SUPABASE_URL` — URL do projeto (mesma do app, `VITE_SUPABASE_URL`)
 - `SUPABASE_ANON_KEY` — anon key pública (mesma do `VITE_SUPABASE_ANON_KEY`)
-- `FLASH_LEARN_APP_URL` — URL do app para o login (ex.: `https://app.flash-learn.com`; default `http://localhost:5173`)
+- `FLASH_LEARN_APP_URL` — (opcional) URL do app para o login; default `https://flashlearn.princeneres.dev`. Sobrescreva só para apontar a um ambiente local/staging.
 
 Opcionais (fallback para CI/devs; têm prioridade sobre o `login` se definidos):
 
@@ -68,8 +68,7 @@ Opcionais (fallback para CI/devs; têm prioridade sobre o `login` se definidos):
       "args": ["/caminho/para/flash-learn/mcp-server/dist/index.js"],
       "env": {
         "SUPABASE_URL": "https://xxxx.supabase.co",
-        "SUPABASE_ANON_KEY": "ey...",
-        "FLASH_LEARN_APP_URL": "https://app.flash-learn.com"
+        "SUPABASE_ANON_KEY": "ey..."
       }
     }
   }

@@ -1,16 +1,41 @@
 {
   "name": "flash-learn-mcp",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "MCP server to create Flash-Learn decks, collections and quizzes as the authenticated user (RLS + plan quotas enforced by the database).",
+  "license": "MIT",
+  "author": "Prince Neres",
+  "homepage": "https://flashlearn.princeneres.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/princeneres/flash-learn.git",
+    "directory": "mcp-server"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "flashcards",
+    "flash-learn",
+    "supabase"
+  ],
   "bin": {
     "flash-learn-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
+    "prepublishOnly": "npm run build",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js"
   },
   "dependencies": {

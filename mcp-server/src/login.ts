@@ -17,7 +17,10 @@ import { saveSession, SESSION_FILE } from './session.js';
  * inject tokens.
  */
 
-const APP_URL = (process.env.FLASH_LEARN_APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+const APP_URL = (process.env.FLASH_LEARN_APP_URL ?? 'https://flashlearn.princeneres.dev').replace(
+  /\/$/,
+  '',
+);
 
 function openBrowser(url: string): void {
   const cmd =
