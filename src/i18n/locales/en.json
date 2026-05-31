@@ -25,24 +25,28 @@
     "planNotFound": "No active plan found for your account."
   },
   "ai": {
-    "settings": {
-      "title": "AI generation",
-      "subtitle": "Use your own LLM key to generate decks. The key is stored only in this browser.",
-      "configured": "Configured",
-      "provider": "Provider",
-      "openaiCompatible": "OpenAI-compatible",
-      "apiKey": "API key",
-      "keyHint": "Stored locally in your browser and sent directly to the provider never to our servers.",
-      "toggleKey": "Show or hide key",
-      "model": "Model",
-      "baseUrl": "Base URL",
-      "test": "Test connection",
-      "testing": "Testing...",
-      "testOk": "Connection works!",
-      "saved": "AI settings saved.",
-      "cleared": "AI settings removed.",
-      "clear": "Remove",
-      "keyRequired": "Enter an API key first."
+    "credits": {
+      "title": "AI credits",
+      "subtitle": "Each AI deck generation uses 1 credit, regardless of how many cards it makes.",
+      "balance": "Your balance",
+      "balanceUnit": "{{count}} credit(s)",
+      "buy": "Buy credits",
+      "buying": "Opening payment...",
+      "pack": "{{credits}} credits",
+      "packStarter": "Starter",
+      "packPopular": "Popular",
+      "packPro": "Pro",
+      "perGeneration": "{{count}} generations",
+      "checkoutError": "Couldn't open the payment. Please try again.",
+      "purchaseSuccess": "Payment confirmed! Your credits have been added.",
+      "history": "History",
+      "historyEmpty": "No activity yet.",
+      "reason": {
+        "purchase": "Purchase",
+        "generation": "Generation",
+        "refund": "Refund",
+        "courtesy": "Courtesy"
+      }
     },
     "generate": {
       "button": "Generate with AI",
@@ -60,8 +64,9 @@
       "instructionsPlaceholder": "e.g., focus on everyday usage, include examples",
       "generate": "Generate",
       "generating": "Generating...",
-      "notConfigured": "Configure your AI provider first to use this feature.",
-      "goToSettings": "Open AI settings",
+      "noCredits": "You have no AI credits. Buy credits to generate decks with AI.",
+      "buyCredits": "Buy credits",
+      "creditCost": "This generation uses 1 credit. Balance: {{count}}.",
       "noRoom": "You've reached your card limit. Free up space or upgrade to generate more.",
       "deckTitle": "Deck title",
       "previewCount": "{{count}} card(s) ready review and edit before creating.",
@@ -73,8 +78,8 @@
       "saveError": "Couldn't save the generated deck."
     },
     "errors": {
-      "NOT_CONFIGURED": "Configure your AI provider in your profile first.",
-      "AUTH": "Invalid API key or no access to the model.",
+      "NO_CREDITS": "You have no AI credits. Buy credits to continue.",
+      "NOT_CONFIGURED": "AI generation is temporarily unavailable. Try again later.",
       "RATE_LIMIT": "Rate limit reached. Wait a moment and try again.",
       "NETWORK": "Network error check your connection, base URL, and that the provider allows browser requests.",
       "BAD_RESPONSE": "The model returned an unexpected response. Try again.",
@@ -520,6 +525,7 @@
     "footerTagline": "Learn it. Keep it.",
     "footerRights": "All rights reserved.",
     "footerPrivacy": "Privacy Policy",
-    "footerTerms": "Terms of Service"
+    "footerTerms": "Terms of Service",
+    "backToTop": "Back to top"
   }
 }

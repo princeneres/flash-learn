@@ -25,24 +25,28 @@
     "planNotFound": "Nenhum plano ativo para sua conta."
   },
   "ai": {
-    "settings": {
-      "title": "Geração com IA",
-      "subtitle": "Use sua própria chave de LLM para gerar decks. A chave fica salva só neste navegador.",
-      "configured": "Configurado",
-      "provider": "Provedor",
-      "openaiCompatible": "Compatível com OpenAI",
-      "apiKey": "Chave de API",
-      "keyHint": "Salva localmente no seu navegador e enviada direto ao provedor nunca aos nossos servidores.",
-      "toggleKey": "Mostrar ou ocultar chave",
-      "model": "Modelo",
-      "baseUrl": "URL base",
-      "test": "Testar conexão",
-      "testing": "Testando...",
-      "testOk": "Conexão funcionando!",
-      "saved": "Configurações de IA salvas.",
-      "cleared": "Configurações de IA removidas.",
-      "clear": "Remover",
-      "keyRequired": "Informe uma chave de API primeiro."
+    "credits": {
+      "title": "Créditos de IA",
+      "subtitle": "Cada geração de deck com IA consome 1 crédito, independente do número de cartas.",
+      "balance": "Seu saldo",
+      "balanceUnit": "{{count}} crédito(s)",
+      "buy": "Comprar créditos",
+      "buying": "Abrindo pagamento...",
+      "pack": "{{credits}} créditos",
+      "packStarter": "Iniciante",
+      "packPopular": "Popular",
+      "packPro": "Pro",
+      "perGeneration": "{{count}} gerações",
+      "checkoutError": "Não foi possível abrir o pagamento. Tente novamente.",
+      "purchaseSuccess": "Pagamento confirmado! Seus créditos foram adicionados.",
+      "history": "Histórico",
+      "historyEmpty": "Nenhuma movimentação ainda.",
+      "reason": {
+        "purchase": "Compra",
+        "generation": "Geração",
+        "refund": "Estorno",
+        "courtesy": "Cortesia"
+      }
     },
     "generate": {
       "button": "Gerar com IA",
@@ -60,8 +64,9 @@
       "instructionsPlaceholder": "ex.: foque no uso cotidiano, inclua exemplos",
       "generate": "Gerar",
       "generating": "Gerando...",
-      "notConfigured": "Configure seu provedor de IA primeiro para usar este recurso.",
-      "goToSettings": "Abrir configurações de IA",
+      "noCredits": "Você não tem créditos de IA. Compre créditos para gerar decks com IA.",
+      "buyCredits": "Comprar créditos",
+      "creditCost": "Esta geração usa 1 crédito. Saldo: {{count}}.",
       "noRoom": "Você atingiu o limite de cartas. Libere espaço ou faça upgrade para gerar mais.",
       "deckTitle": "Título do deck",
       "previewCount": "{{count}} carta(s) prontas revise e edite antes de criar.",
@@ -73,8 +78,8 @@
       "saveError": "Não foi possível salvar o deck gerado."
     },
     "errors": {
-      "NOT_CONFIGURED": "Configure seu provedor de IA no perfil primeiro.",
-      "AUTH": "Chave de API inválida ou sem acesso ao modelo.",
+      "NO_CREDITS": "Você não tem créditos de IA. Compre créditos para continuar.",
+      "NOT_CONFIGURED": "A geração com IA está temporariamente indisponível. Tente mais tarde.",
       "RATE_LIMIT": "Limite de requisições atingido. Aguarde um instante e tente de novo.",
       "NETWORK": "Erro de rede verifique sua conexão, a URL base e se o provedor permite requisições do navegador.",
       "BAD_RESPONSE": "O modelo retornou uma resposta inesperada. Tente novamente.",
@@ -520,6 +525,7 @@
     "footerTagline": "Aprenda. E guarde.",
     "footerRights": "Todos os direitos reservados.",
     "footerPrivacy": "Política de Privacidade",
-    "footerTerms": "Termos de Serviço"
+    "footerTerms": "Termos de Serviço",
+    "backToTop": "Voltar ao topo"
   }
 }

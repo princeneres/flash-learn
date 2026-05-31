@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ArrowRight,
+  ArrowUp,
   BadgeCheck,
   Brain,
   Check,
@@ -238,16 +239,35 @@ const Landing: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const [showTop, setShowTop] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 12);
+      // reveal once the user has scrolled past one full viewport
+      setShowTop(y > window.innerHeight);
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(max > 0 ? Math.min(1, y / max) : 0);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, []);
 
   const goLogin = () => navigate('/login');
+
+  const scrollToTop = () =>
+    window.scrollTo({
+      top: 0,
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    });
 
   const capabilities = [
     { icon: Brain, value: t('landing.cap1Value'), label: t('landing.cap1Label') },
@@ -632,6 +652,62 @@ const Landing: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* ── Back-to-top button ───────────────────────────────── */}
+      <button
+        type="button"
+        onClick={scrollToTop}
+        aria-label={t('landing.backToTop')}
+        title={t('landing.backToTop')}
+        className={cn(
+          'group fixed bottom-6 right-6 z-50 grid h-14 w-14 place-items-center rounded-full sm:bottom-8 sm:right-8',
+          'transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          showTop
+            ? 'translate-y-0 scale-100 opacity-100'
+            : 'pointer-events-none translate-y-6 scale-75 opacity-0',
+        )}
+      >
+        {/* animated glow halo */}
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-full bg-warm/40 blur-xl transition-opacity duration-500 group-hover:bg-warm/60"
+        />
+        {/* pulse ring on hover */}
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-full ring-2 ring-warm/50 opacity-0 transition-opacity duration-300 group-hover:animate-pulse-ring group-hover:opacity-100"
+        />
+
+        {/* scroll progress ring */}
+        <svg aria-hidden viewBox="0 0 48 48" className="absolute inset-0 h-full w-full -rotate-90">
+          <circle cx="24" cy="24" r="21" className="fill-none stroke-warm/20" strokeWidth="2.5" />
+          <circle
+            cx="24"
+            cy="24"
+            r="21"
+            className="fill-none stroke-warm transition-[stroke-dashoffset] duration-150 ease-out"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray={2 * Math.PI * 21}
+            strokeDashoffset={2 * Math.PI * 21 * (1 - scrollProgress)}
+          />
+        </svg>
+
+        {/* solid core */}
+        <span
+          className={cn(
+            'relative grid h-11 w-11 place-items-center rounded-full',
+            'bg-gradient-to-br from-warm to-warm/80 text-warm-foreground shadow-lg shadow-warm/40',
+            'transition-transform duration-300 group-hover:scale-105 group-active:scale-95',
+          )}
+        >
+          <ArrowUp
+            className="h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5"
+            strokeWidth={2.5}
+          />
+        </span>
+      </button>
     </div>
   );
 };

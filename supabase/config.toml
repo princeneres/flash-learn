@@ -357,6 +357,16 @@ allow_dynamic_registration = false
 [functions.feature-suggestion]
 verify_jwt = true
 
+[functions.ai-generate]
+verify_jwt = true
+
+[functions.buy-credits]
+verify_jwt = true
+
+# AbacatePay calls this without a Supabase JWT; auth is via webhook secret + HMAC.
+[functions.abacate-webhook]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

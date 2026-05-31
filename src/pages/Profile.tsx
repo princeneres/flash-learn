@@ -23,7 +23,7 @@ import { LoadingState } from '../components/LoadingState';
 import { useToast } from '../components/ui/use-toast';
 import { AVAILABLE_LANGUAGES } from '../i18n';
 import { Card, CardContent } from '../components/ui/card';
-import { LlmSettings } from '../components/LlmSettings';
+import { AiCreditsSettings } from '../components/AiCreditsSettings';
 import { useTheme } from '../components/theme-provider';
 import { useSound } from '../hooks/useSound';
 import { AvatarService } from '../services/AvatarService';
@@ -375,7 +375,7 @@ const Profile: React.FC = () => {
               />
             </div>
 
-            <LlmSettings />
+            <AiCreditsSettings />
           </div>
         </CardContent>
       </Card>

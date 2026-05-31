@@ -1,15 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { Sparkles, Trash2, ArrowLeft, Wand2 } from 'lucide-react';
+import { Sparkles, Trash2, ArrowLeft, Wand2, Coins } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
   LlmService,
   MAX_CARDS_PER_GENERATION,
+  LlmError,
   llmErrorKey,
   type Difficulty,
   type GeneratedCard,
 } from '../services/LlmService';
+import { AiCreditService } from '../services/AiCreditService';
+import { useAiCredits } from '../hooks/useAiCredits';
 import { DeckService } from '../services/DeckService';
 import { CardService } from '../services/CardService';
 import { parsePlanError, planErrorTitle } from '../lib/planErrors';
@@ -44,8 +46,22 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
   const { toast } = useToast();
 
   const uid = currentUser?.id ?? '';
-  const configured = uid ? LlmService.isConfigured(uid) : false;
+  const { balance, refresh: refreshCredits } = useAiCredits();
+  const hasCredits = (balance ?? 0) > 0;
   const maxAllowed = Math.max(0, Math.min(maxCardsPerDeck, totalRoom, MAX_CARDS_PER_GENERATION));
+  const [buying, setBuying] = useState(false);
+
+  const handleBuyCredits = async () => {
+    setBuying(true);
+    try {
+      const url = await AiCreditService.startCheckout('popular');
+      window.location.href = url;
+    } catch (err) {
+      console.error(err);
+      toast({ title: t('ai.credits.checkoutError'), variant: 'destructive' });
+      setBuying(false);
+    }
+  };
 
   const defaultLanguage = i18n.language?.startsWith('pt') ? 'Português' : 'English';
 
@@ -93,7 +109,7 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
     }
     setGenerating(true);
     try {
-      const result = await LlmService.generateCards(uid, {
+      const result = await LlmService.generateCards({
         theme: theme.trim(),
         count: Math.min(count, maxAllowed),
         language: language.trim() || defaultLanguage,
@@ -102,9 +118,13 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
       });
       setCards(result);
       setDeckTitle(theme.trim());
+      // A credit was spent server-side; reflect the new balance.
+      void refreshCredits();
     } catch (err) {
       console.error(err);
       toast({ title: t(llmErrorKey(err)), variant: 'destructive' });
+      // On insufficient credits the balance is authoritative — re-sync it.
+      if (err instanceof LlmError && err.code === 'NO_CREDITS') void refreshCredits();
     } finally {
       setGenerating(false);
     }
@@ -155,12 +175,13 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
   };
 
   const renderBody = () => {
-    if (!configured) {
+    if (!hasCredits) {
       return (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t('ai.generate.notConfigured')}</p>
-          <Button asChild onClick={() => handleClose(false)}>
-            <Link to="/profile">{t('ai.generate.goToSettings')}</Link>
+          <p className="text-sm text-muted-foreground">{t('ai.generate.noCredits')}</p>
+          <Button type="button" onClick={handleBuyCredits} disabled={buying}>
+            <Coins className="mr-2 h-4 w-4" />
+            {buying ? t('ai.credits.buying') : t('ai.generate.buyCredits')}
           </Button>
         </div>
       );
@@ -286,12 +307,17 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
             className="min-h-[80px]"
           />
         </div>
+
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Coins className="h-3.5 w-3.5" />
+          {t('ai.generate.creditCost', { count: balance ?? 0 })}
+        </p>
       </div>
     );
   };
 
   const renderFooter = () => {
-    if (!configured || maxAllowed <= 0) {
+    if (!hasCredits || maxAllowed <= 0) {
       return (
         <Button type="button" variant="ghost" onClick={() => handleClose(false)}>
           {t('common.cancel')}
