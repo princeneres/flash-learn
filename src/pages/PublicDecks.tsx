@@ -192,7 +192,7 @@ const PublicDecks: React.FC = () => {
                         <div className="flex min-w-0 items-start gap-3">
                           <span
                             className={cn(
-                              'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-inner',
+                              'deck-tile flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-inner',
                               visual.tile,
                             )}
                           >

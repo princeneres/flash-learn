@@ -1,6 +1,6 @@
 import { startOfDay } from 'date-fns';
 import { supabase } from '../lib/supabase';
-import { calculateReview } from './srsAlgorithm';
+import { calculateReview, type SrsSettings } from './srsAlgorithm';
 import { GamificationService } from './GamificationService';
 import { MediaStorageService } from './MediaStorageService';
 import { collectCardMediaRefs } from '../lib/media';
@@ -183,13 +183,19 @@ export const CardService = {
     return [...reviewCards, ...(newRows ?? []).map(fromDbCard)];
   },
 
-  processReview: async (card: Card, quality: number, deckCategory?: string) => {
+  processReview: async (
+    card: Card,
+    quality: number,
+    deckCategory?: string,
+    settings?: SrsSettings,
+  ) => {
     const result = calculateReview(
       quality,
       card.interval,
       card.easeFactor,
       card.repetitions,
       card.status,
+      settings,
     );
 
     // Captured before the update so the stats "new vs review" split is accurate.

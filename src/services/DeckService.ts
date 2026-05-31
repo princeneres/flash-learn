@@ -3,6 +3,7 @@ import { MediaStorageService } from './MediaStorageService';
 import { collectCardMediaRefs } from '../lib/media';
 import { fromDbDeck, toDbDeck } from './_mappers';
 import { parsePlanError } from '../lib/planErrors';
+import type { SrsSettings } from './srsAlgorithm';
 
 export interface Deck {
   id: string;
@@ -15,6 +16,8 @@ export interface Deck {
   isPublic: boolean;
   cardCount: number;
   createdAt: string;
+  /** Per-deck scheduler tunables, always normalized (defaults filled in). */
+  srsSettings: SrsSettings;
 }
 
 const TABLE = 'decks';
@@ -61,6 +64,7 @@ export const DeckService = {
     if (patch.category !== undefined) payload.category = patch.category;
     if (patch.tags !== undefined) payload.tags = patch.tags;
     if (patch.isPublic !== undefined) payload.is_public = patch.isPublic;
+    if (patch.srsSettings !== undefined) payload.srs_settings = patch.srsSettings;
     const { error } = await supabase.from(TABLE).update(payload).eq('id', deckId);
     if (error) throw error;
   },
