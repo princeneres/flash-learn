@@ -248,7 +248,7 @@ const StudySession: React.FC = () => {
   const answerCorrect = typeMode && checked ? answersMatch(typed, currentCard.back) : false;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Button variant="ghost" onClick={() => navigate('/')} className="w-fit gap-2 rounded-xl">
@@ -317,18 +317,18 @@ const StudySession: React.FC = () => {
           }
         }}
       >
-        <div className="rounded-[22px] border border-white/5 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-8 sm:p-10">
-          <div className="perspective-1000 min-h-[360px]">
+        <div className="rounded-[22px] border border-white/5 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-3 sm:p-10">
+          <div className="perspective-1000 min-h-[240px] sm:min-h-[360px]">
             <div
               className={clsx(
-                'relative w-full min-h-[320px] transition-transform duration-500 transform-style-3d motion-reduce:transition-none',
+                'relative w-full min-h-[220px] sm:min-h-[320px] transition-transform duration-500 transform-style-3d motion-reduce:transition-none',
                 isFlipped ? 'rotate-y-180' : '',
               )}
             >
               {/* Front */}
               <div
                 className={clsx(
-                  'absolute inset-0 flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-border/60 bg-card px-8 text-center shadow-xl backface-hidden',
+                  'absolute inset-0 flex min-h-[220px] sm:min-h-[320px] flex-col items-center justify-center overflow-y-auto rounded-2xl border border-border/60 bg-card px-4 py-6 text-center shadow-xl backface-hidden sm:px-8',
                   isFlipped && 'opacity-0',
                 )}
               >
@@ -336,7 +336,7 @@ const StudySession: React.FC = () => {
                   key={`front-${currentCard.id}`}
                   html={currentCard.front}
                   ownerId={currentCard.ownerId}
-                  className="rich-text text-xl sm:text-2xl font-semibold leading-relaxed"
+                  className="rich-text w-full max-w-full break-words [overflow-wrap:anywhere] text-lg sm:text-2xl font-semibold leading-relaxed"
                   autoplayFirst={!isFlipped}
                   clozeMode={isCloze ? 'front' : undefined}
                 />
@@ -350,7 +350,7 @@ const StudySession: React.FC = () => {
                   </div>
                 )}
                 {!typeMode && (
-                  <span className="mt-10 inline-flex items-center gap-2 rounded-full bg-muted/50 px-4 py-1.5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                  <span className="mt-6 sm:mt-10 inline-flex items-center gap-2 rounded-full bg-muted/50 px-4 py-1.5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
                     {t('study.showAnswer')}
                   </span>
                 )}
@@ -358,7 +358,7 @@ const StudySession: React.FC = () => {
               {/* Back */}
               <div
                 className={clsx(
-                  'absolute inset-0 flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-border/60 bg-card px-8 text-center shadow-xl backface-hidden rotate-y-180',
+                  'absolute inset-0 flex min-h-[220px] sm:min-h-[320px] flex-col items-center justify-center overflow-y-auto rounded-2xl border border-border/60 bg-card px-4 py-6 text-center shadow-xl backface-hidden rotate-y-180 sm:px-8',
                   !isFlipped && 'opacity-0',
                 )}
               >
@@ -371,7 +371,7 @@ const StudySession: React.FC = () => {
                       key={`cloze-back-${currentCard.id}`}
                       html={currentCard.front}
                       ownerId={currentCard.ownerId}
-                      className="rich-text mt-6 text-2xl sm:text-3xl font-bold leading-relaxed"
+                      className="rich-text mt-6 w-full max-w-full break-words [overflow-wrap:anywhere] text-xl sm:text-3xl font-bold leading-relaxed"
                       autoplayFirst={isFlipped}
                       clozeMode="back"
                     />
@@ -380,7 +380,7 @@ const StudySession: React.FC = () => {
                         key={`cloze-notes-${currentCard.id}`}
                         html={currentCard.back}
                         ownerId={currentCard.ownerId}
-                        className="rich-text mt-4 text-base text-muted-foreground leading-relaxed"
+                        className="rich-text mt-4 w-full max-w-full break-words [overflow-wrap:anywhere] text-base text-muted-foreground leading-relaxed"
                       />
                     )}
                   </>
@@ -389,7 +389,7 @@ const StudySession: React.FC = () => {
                     key={`back-${currentCard.id}`}
                     html={currentCard.back}
                     ownerId={currentCard.ownerId}
-                    className="rich-text mt-6 text-2xl sm:text-3xl font-bold text-primary leading-relaxed"
+                    className="rich-text mt-6 w-full max-w-full break-words [overflow-wrap:anywhere] text-xl sm:text-3xl font-bold text-primary leading-relaxed"
                     autoplayFirst={isFlipped}
                   />
                 )}

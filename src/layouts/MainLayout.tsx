@@ -41,6 +41,11 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const [suggestionOpen, setSuggestionOpen] = React.useState(false);
 
+  // The study session has its own self-contained header (Back, progress, mute);
+  // hiding the global navbar there frees vertical space so the whole card +
+  // rating row fits without scrolling, especially on mobile.
+  const isStudying = location.pathname.startsWith('/study/');
+
   const displayName =
     (currentUser?.user_metadata?.full_name as string | undefined) ||
     currentUser?.email?.split('@')[0] ||
@@ -73,7 +78,12 @@ const MainLayout: React.FC = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="app-shell min-h-screen">
-        <nav className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+        <nav
+          className={cn(
+            'sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl',
+            isStudying && 'hidden',
+          )}
+        >
           <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
             <div className="flex items-center gap-6">
               <Link to="/dashboard" className="text-xl font-semibold tracking-tight">
@@ -178,7 +188,7 @@ const MainLayout: React.FC = () => {
             </div>
           </div>
         </nav>
-        <main className="mx-auto w-full max-w-6xl px-4 py-8">
+        <main className={cn('mx-auto w-full max-w-6xl px-4', isStudying ? 'py-4' : 'py-8')}>
           <div key={location.pathname} className="animate-fade-up">
             <Outlet />
           </div>
