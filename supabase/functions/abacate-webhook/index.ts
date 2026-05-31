@@ -91,8 +91,17 @@ Deno.serve(async (req) => {
     id?: string;
     data?: {
       id?: string;
+      currentPeriodEnd?: string;
+      nextBilling?: string;
       billing?: {
         id?: string;
+        externalId?: string;
+        metadata?: Record<string, unknown>;
+      };
+      subscription?: {
+        id?: string;
+        currentPeriodEnd?: string;
+        nextBilling?: string;
         externalId?: string;
         metadata?: Record<string, unknown>;
       };
@@ -144,6 +153,77 @@ Deno.serve(async (req) => {
 
     if (orderId) {
       await admin.from('ai_credit_orders').update({ status: 'paid' }).eq('id', orderId);
+    }
+    return json({ received: true });
+  }
+
+  // Subscription activation and recurring renewals — grant/extend the Pro plan and the
+  // included monthly credits, both idempotent.
+  if (event.event === 'subscription.completed' || event.event === 'subscription.renewed') {
+    const sub = event.data?.subscription ?? event.data;
+    const metadata = event.data?.subscription?.metadata ?? event.data?.metadata ?? {};
+    const userId =
+      (typeof metadata.user_id === 'string' && metadata.user_id) ||
+      event.data?.subscription?.externalId ||
+      event.data?.externalId;
+    const planId = typeof metadata.plan_id === 'string' ? metadata.plan_id : 'pro';
+    const grantCredits =
+      typeof metadata.grant_credits === 'number'
+        ? metadata.grant_credits
+        : Number(metadata.grant_credits) || 0;
+    const subscriptionId = sub?.id ?? event.id;
+    const periodEnd = sub?.currentPeriodEnd ?? sub?.nextBilling ?? null;
+
+    if (!userId || !subscriptionId) {
+      console.error('subscription event missing fields', { userId, subscriptionId });
+      return json({ error: 'Missing metadata' }, 400);
+    }
+    if (!periodEnd) {
+      // Non-fatal: log so we can inspect the real payload and map the field correctly.
+      console.warn('subscription event without period end', event.event, subscriptionId);
+    }
+
+    const { error: subErr } = await admin.rpc('apply_subscription', {
+      p_user: userId,
+      p_plan: planId,
+      p_status: 'active',
+      p_period_end: periodEnd,
+      p_abacate_id: subscriptionId,
+    });
+    if (subErr) {
+      console.error('apply_subscription failed', subErr);
+      return json({ error: 'Subscription apply failed' }, 500);
+    }
+
+    if (grantCredits > 0) {
+      // Idempotent per (subscription, period): renewals grant fresh credits, retries don't.
+      const { error: creditErr } = await admin.rpc('credit_ai', {
+        p_user: userId,
+        p_amount: grantCredits,
+        p_reason: 'subscription',
+        p_abacate_id: `sub:${subscriptionId}:${periodEnd ?? event.id}`,
+      });
+      if (creditErr) {
+        console.error('subscription credit failed', creditErr);
+        return json({ error: 'Credit failed' }, 500);
+      }
+    }
+    return json({ received: true });
+  }
+
+  // Cancellation — keep access until current_period_end; just flip the status flag.
+  if (event.event === 'subscription.cancelled') {
+    const metadata = event.data?.subscription?.metadata ?? event.data?.metadata ?? {};
+    const userId =
+      (typeof metadata.user_id === 'string' && metadata.user_id) ||
+      event.data?.subscription?.externalId ||
+      event.data?.externalId;
+    if (userId) {
+      const { error } = await admin.rpc('cancel_subscription', { p_user: userId });
+      if (error) {
+        console.error('cancel_subscription failed', error);
+        return json({ error: 'Cancel failed' }, 500);
+      }
     }
     return json({ received: true });
   }

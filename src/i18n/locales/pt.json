@@ -24,6 +24,25 @@
     "deckCardLimitReached": "Deck cheio com {{limit}} cartas.",
     "planNotFound": "Nenhum plano ativo para sua conta."
   },
+  "plan": {
+    "title": "Plano",
+    "subtitle": "Assine o Pro para recursos avançados e créditos mensais.",
+    "badgeFree": "Grátis",
+    "badgePro": "Pro",
+    "proMonthly": "Mensal",
+    "proAnnual": "Anual",
+    "upgrade": "Fazer upgrade",
+    "includedCredits": "{{count}} créditos/mês inclusos",
+    "perkDecks": "Decks e cartas ilimitados",
+    "perkStats": "Estatísticas avançadas",
+    "perkExport": "Exportar seus decks",
+    "perkCredits": "Créditos de IA mensais inclusos",
+    "activeDescription": "Você tem o plano Pro ativo.",
+    "renewsOn": "Renova em {{date}}.",
+    "endsOn": "Acesso até {{date}}.",
+    "upgradeSuccess": "Bem-vindo ao Pro! 🎉",
+    "checkoutError": "Não foi possível abrir o pagamento. Tente novamente."
+  },
   "ai": {
     "credits": {
       "title": "Créditos de IA",

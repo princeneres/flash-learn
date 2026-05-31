@@ -24,6 +24,7 @@ import { useToast } from '../components/ui/use-toast';
 import { AVAILABLE_LANGUAGES } from '../i18n';
 import { Card, CardContent } from '../components/ui/card';
 import { AiCreditsSettings } from '../components/AiCreditsSettings';
+import { PlanSettings } from '../components/PlanSettings';
 import { useTheme } from '../components/theme-provider';
 import { useSound } from '../hooks/useSound';
 import { AvatarService } from '../services/AvatarService';
@@ -375,6 +376,7 @@ const Profile: React.FC = () => {
               />
             </div>
 
+            <PlanSettings />
             <AiCreditsSettings />
           </div>
         </CardContent>

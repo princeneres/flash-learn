@@ -24,6 +24,25 @@
     "deckCardLimitReached": "Deck full at {{limit}} cards.",
     "planNotFound": "No active plan found for your account."
   },
+  "plan": {
+    "title": "Plan",
+    "subtitle": "Subscribe to Pro for advanced features and monthly credits.",
+    "badgeFree": "Free",
+    "badgePro": "Pro",
+    "proMonthly": "Monthly",
+    "proAnnual": "Annual",
+    "upgrade": "Upgrade",
+    "includedCredits": "{{count}} credits/month included",
+    "perkDecks": "Unlimited decks and cards",
+    "perkStats": "Advanced statistics",
+    "perkExport": "Export your decks",
+    "perkCredits": "Monthly AI credits included",
+    "activeDescription": "You're on the Pro plan.",
+    "renewsOn": "Renews on {{date}}.",
+    "endsOn": "Access until {{date}}.",
+    "upgradeSuccess": "Welcome to Pro! 🎉",
+    "checkoutError": "Couldn't open checkout. Please try again."
+  },
   "ai": {
     "credits": {
       "title": "AI credits",

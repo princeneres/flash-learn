@@ -6,6 +6,8 @@ export interface UsePlanResult {
   limits: PlanLimits | null;
   loading: boolean;
   refresh: () => Promise<void>;
+  isPro: boolean;
+  features: Record<string, unknown>;
 }
 
 export const usePlan = (): UsePlanResult => {
@@ -33,5 +35,8 @@ export const usePlan = (): UsePlanResult => {
     refresh();
   }, [refresh]);
 
-  return { limits, loading, refresh };
+  const isPro = limits?.plan.id === 'pro';
+  const features = limits?.plan.features ?? {};
+
+  return { limits, loading, refresh, isPro, features };
 };
