@@ -18,13 +18,13 @@
     "fn:deploy": "supabase functions deploy",
     "secrets:list": "supabase secrets list",
     "secrets:set": "supabase secrets set",
-    "env:list": "vercel env ls",
-    "env:add": "vercel env add",
-    "env:rm": "vercel env rm",
-    "env:pull": "vercel env pull .env.local",
-    "deploy": "vercel deploy --prod",
-    "deploy:preview": "vercel deploy",
-    "deploy:logs": "vercel logs",
+    "env:list": "npx vercel env ls",
+    "env:add": "npx vercel env add",
+    "env:rm": "npx vercel env rm",
+    "env:pull": "npx vercel env pull .env.local",
+    "deploy": "npx vercel deploy --prod",
+    "deploy:preview": "npx vercel deploy",
+    "deploy:logs": "npx vercel logs",
     "deploy:watch": "bash scripts/deploy-watch.sh"
   },
   "dependencies": {
@@ -75,7 +75,6 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vercel": "^54.6.1",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
     "workbox-window": "^7.4.0"
