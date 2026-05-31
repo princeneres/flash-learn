@@ -33,24 +33,30 @@ npm install
 npm run build
 ```
 
+## Login (sem copiar token)
+
+O usuário **não precisa copiar nenhum token**. Basta rodar:
+
+```bash
+npx flash-learn-mcp login
+# (em dev local: node dist/index.js login)
+```
+
+Isso abre o navegador na página `/connect-mcp` do app. Como o usuário já está logado no Flash-Learn (inclusive via Google/GitHub), a página entrega a sessão de volta ao comando, que a salva em `~/.flash-learn-mcp/session.json`. O servidor MCP lê esse arquivo e **renova o access token automaticamente** — login é feito uma vez só.
+
+> Pré-requisito: estar logado no app no navegador. Se não estiver, a página pede login e você reabre o link mostrado no terminal.
+
 ## Configuração no cliente MCP
 
 Variáveis de ambiente necessárias:
 
 - `SUPABASE_URL` — URL do projeto (mesma do app, `VITE_SUPABASE_URL`)
 - `SUPABASE_ANON_KEY` — anon key pública (mesma do `VITE_SUPABASE_ANON_KEY`)
-- `SUPABASE_ACCESS_TOKEN` — JWT do usuário logado
-- `SUPABASE_REFRESH_TOKEN` — (opcional) refresh token para renovar o access token
+- `FLASH_LEARN_APP_URL` — URL do app para o login (ex.: `https://app.flash-learn.com`; default `http://localhost:5173`)
 
-### Como obter o access token
+Opcionais (fallback para CI/devs; têm prioridade sobre o `login` se definidos):
 
-No app, com o usuário logado, no console do navegador:
-
-```js
-(await window.supabase?.auth.getSession())?.data.session?.access_token;
-```
-
-Ou via `supabase.auth.getSession()` em qualquer ponto autenticado. O access token expira (~1h); para sessões longas, forneça também o `SUPABASE_REFRESH_TOKEN`.
+- `SUPABASE_ACCESS_TOKEN` / `SUPABASE_REFRESH_TOKEN`
 
 ### Exemplo — Claude Desktop (`claude_desktop_config.json`)
 
@@ -63,13 +69,14 @@ Ou via `supabase.auth.getSession()` em qualquer ponto autenticado. O access toke
       "env": {
         "SUPABASE_URL": "https://xxxx.supabase.co",
         "SUPABASE_ANON_KEY": "ey...",
-        "SUPABASE_ACCESS_TOKEN": "ey...",
-        "SUPABASE_REFRESH_TOKEN": "..."
+        "FLASH_LEARN_APP_URL": "https://app.flash-learn.com"
       }
     }
   }
 }
 ```
+
+Depois de registrar o servidor, rode `npx flash-learn-mcp login` uma vez para conectar a conta.
 
 ## Teste local
 

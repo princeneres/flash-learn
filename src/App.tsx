@@ -17,6 +17,7 @@ import Profile from './pages/Profile';
 import PublicDecks from './pages/PublicDecks';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import ConnectMcp from './pages/ConnectMcp';
 import { Toaster } from './components/ui/toaster';
 import { LoadingState } from './components/LoadingState';
 
@@ -43,6 +44,7 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/connect-mcp" element={<ConnectMcp />} />
           <Route element={<MainLayout />}>
             <Route
               path="/dashboard"
