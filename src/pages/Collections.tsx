@@ -151,7 +151,7 @@ const Collections: React.FC = () => {
                   )}
                   aria-hidden
                 />
-                <CardHeader className="flex flex-row items-start justify-between">
+                <CardHeader className="flex flex-row items-start justify-between pt-8">
                   <div
                     className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-2xl shadow-inner',

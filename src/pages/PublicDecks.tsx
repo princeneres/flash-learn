@@ -235,7 +235,7 @@ const PublicDecks: React.FC = () => {
                         )}
                         aria-hidden
                       />
-                      <CardHeader className="flex flex-row items-start justify-between gap-2">
+                      <CardHeader className="flex flex-row items-start justify-between gap-2 pt-8">
                         <div className="flex min-w-0 items-start gap-3">
                           <span
                             className={cn(

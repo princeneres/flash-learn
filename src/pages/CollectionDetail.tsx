@@ -303,7 +303,7 @@ const CollectionDetail: React.FC = () => {
                     )}
                     aria-hidden
                   />
-                  <CardHeader className="flex flex-row items-start justify-between">
+                  <CardHeader className="flex flex-row items-start justify-between pt-8">
                     <div
                       className={cn(
                         'flex h-11 w-11 items-center justify-center rounded-xl shadow-inner',
@@ -377,7 +377,7 @@ const CollectionDetail: React.FC = () => {
                 key={quiz.id}
                 className="card-lift relative overflow-hidden border-border/50 bg-card/80 hover:border-warm/60 hover:shadow-elegant"
               >
-                <CardHeader className="flex flex-row items-start justify-between">
+                <CardHeader className="flex flex-row items-start justify-between pt-8">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warm/15 text-warm shadow-inner">
                     <ListChecks className="h-5 w-5" aria-hidden />
                   </div>
