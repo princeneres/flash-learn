@@ -391,7 +391,13 @@
     "unfavorite": "Remove from favorites",
     "favoriteSuccess": "Added to favorites.",
     "unfavoriteSuccess": "Removed from favorites.",
-    "favoriteError": "Couldn't update favorites."
+    "favoriteError": "Couldn't update favorites.",
+    "addToCollection": "Add to collection",
+    "addToCollectionTitle": "Add \"{{deck}}\" to a collection",
+    "addToCollectionHelp": "A copy of this deck will be created in your account and added to the chosen collection.",
+    "addToCollectionEmpty": "You have no collections yet. Create one first.",
+    "addToCollectionSuccess": "Added to collection \"{{collection}}\".",
+    "addToCollectionError": "Couldn't add to the collection."
   },
   "profile": {
     "languageUpdated": "Language preference saved.",
@@ -590,7 +596,12 @@
     "addDeckEmpty": "You have no other decks to add.",
     "removeDeck": "Remove from collection",
     "removeDeckConfirm": "Remove this deck from the collection?",
-    "notFound": "Collection not found"
+    "notFound": "Collection not found",
+    "addTabMine": "My decks",
+    "addTabPublic": "Public decks",
+    "addPublicEmpty": "No public decks found.",
+    "addPublicAction": "Copy",
+    "addPublicSuccess": "Deck copied and added to the collection."
   },
   "quiz": {
     "createQuiz": "New quiz",

@@ -3,6 +3,7 @@ import { MediaStorageService } from './MediaStorageService';
 import { collectCardMediaRefs } from '../lib/media';
 import { fromDbDeck, toDbDeck } from './_mappers';
 import { parsePlanError } from '../lib/planErrors';
+import { CardService } from './CardService';
 import type { SrsSettings } from './srsAlgorithm';
 
 export interface Deck {
@@ -91,6 +92,43 @@ export const DeckService = {
     }
     const { error } = await supabase.from(TABLE).delete().eq('id', deckId);
     if (error) throw error;
+  },
+
+  // Clone a deck the caller can read (their own or a public one) into a brand-new
+  // deck owned by them. Card media refs are copied verbatim — the same stored
+  // files are reused, mirroring how studying a public deck already references
+  // them. The copy starts private and its cards reset to fresh SRS state (the
+  // bulk insert leaves the scheduler columns at their "new" defaults).
+  copyDeck: async (
+    ownerId: string,
+    sourceDeckId: string,
+    overrides?: Partial<Pick<Deck, 'title' | 'category' | 'tags' | 'srsSettings'>>,
+  ): Promise<string> => {
+    const source = await DeckService.getDeckDetail(sourceDeckId);
+    if (!source) throw new Error('Source deck not found');
+    const cards = await CardService.getDeckCards(sourceDeckId);
+
+    const newDeckId = await DeckService.createDeck(ownerId, {
+      title: overrides?.title ?? source.title,
+      category: overrides?.category ?? source.category,
+      tags: overrides?.tags ?? source.tags,
+      isPublic: false,
+      srsSettings: overrides?.srsSettings ?? source.srsSettings,
+    });
+
+    await CardService.bulkCreateCards(
+      ownerId,
+      newDeckId,
+      cards.map((c) => ({
+        front: c.front,
+        back: c.back,
+        frontAudio: c.frontAudio,
+        backAudio: c.backAudio,
+        tags: c.tags,
+      })),
+    );
+
+    return newDeckId;
   },
 
   // Served through an RPC so each deck carries its owner's *current* profile

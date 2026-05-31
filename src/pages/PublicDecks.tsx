@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { BookOpen, Globe2, Search, Tag, Star } from 'lucide-react';
+import { BookOpen, Globe2, Search, Tag, Star, FolderPlus } from 'lucide-react';
 import { DeckService, type Deck } from '../services/DeckService';
 import { FavoriteService } from '../services/FavoriteService';
+import { CollectionService, type Collection } from '../services/CollectionService';
 import { collectCategories, normalizeCategory } from '../lib/categories';
 import { getDeckVisual } from '../lib/deckVisuals';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { useToast } from '../components/ui/use-toast';
 import { cn } from '../lib/utils';
 
@@ -26,6 +34,12 @@ const PublicDecks: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  // "Add to collection" flow: clone the public deck into the user's account,
+  // then link the copy to a chosen collection.
+  const [collectionTarget, setCollectionTarget] = useState<Deck | null>(null);
+  const [collections, setCollections] = useState<Collection[] | null>(null);
+  const [addingCollection, setAddingCollection] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -84,6 +98,39 @@ const PublicDecks: React.FC = () => {
       toast({ title: t('publicDecks.favoriteError'), variant: 'destructive' });
     } finally {
       setPendingFavorite(null);
+    }
+  };
+
+  const openAddToCollection = async (deck: Deck) => {
+    setCollectionTarget(deck);
+    if (collections === null) {
+      try {
+        setCollections(await CollectionService.getUserCollections(currentUser!.id));
+      } catch (error) {
+        console.error(error);
+        setCollections([]);
+      }
+    }
+  };
+
+  const handleAddToCollection = async (collection: Collection) => {
+    if (!currentUser || !collectionTarget) return;
+    setAddingCollection(collection.id);
+    try {
+      const newDeckId = await DeckService.copyDeck(currentUser.id, collectionTarget.id);
+      await CollectionService.addDeck(
+        currentUser.id,
+        collection.id,
+        newDeckId,
+        collection.deckCount,
+      );
+      toast({ title: t('publicDecks.addToCollectionSuccess', { collection: collection.title }) });
+      setCollectionTarget(null);
+    } catch (error) {
+      console.error(error);
+      toast({ title: t('publicDecks.addToCollectionError'), variant: 'destructive' });
+    } finally {
+      setAddingCollection(null);
     }
   };
 
@@ -249,6 +296,16 @@ const PublicDecks: React.FC = () => {
                             <Link to={`/study/${deck.id}`}>{t('publicDecks.study')}</Link>
                           </Button>
                         </div>
+                        {currentUser && (
+                          <Button
+                            variant="ghost"
+                            className="w-full"
+                            onClick={() => openAddToCollection(deck)}
+                          >
+                            <FolderPlus className="mr-2 h-4 w-4" />
+                            {t('publicDecks.addToCollection')}
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   );
@@ -258,6 +315,50 @@ const PublicDecks: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Add-to-collection dialog */}
+      <Dialog open={!!collectionTarget} onOpenChange={(open) => !open && setCollectionTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('publicDecks.addToCollectionTitle', { deck: collectionTarget?.title ?? '' })}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('publicDecks.addToCollectionHelp')}</p>
+          {collections === null ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t('common.loading')}</p>
+          ) : collections.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t('publicDecks.addToCollectionEmpty')}
+            </p>
+          ) : (
+            <div className="max-h-72 divide-y divide-border/60 overflow-y-auto rounded-lg border border-border/60">
+              {collections.map((collection) => (
+                <div
+                  key={collection.id}
+                  className="flex items-center justify-between gap-2 p-3 text-sm"
+                >
+                  <span className="min-w-0 truncate font-medium">{collection.title}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={addingCollection !== null}
+                    onClick={() => handleAddToCollection(collection)}
+                  >
+                    <FolderPlus className="mr-1 h-4 w-4" />
+                    {t('collections.addDeck')}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCollectionTarget(null)}>
+              {t('common.cancel')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

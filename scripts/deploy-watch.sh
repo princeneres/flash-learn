@@ -36,7 +36,7 @@ while [ "$elapsed" -lt "$MAX_WAIT" ]; do
   status="$(npx vercel inspect "$url" 2>&1 \
     | sed -E 's/\x1b\[[0-9;]*m//g' \
     | grep -E '^[[:space:]]*status[[:space:]]' \
-    | sed -E 's/.*status[[:space:]]+//; s/[^A-Za-z].*//' || true)"
+    | sed -E 's/.*status[[:space:]]+//; s/^[^A-Za-z]*//; s/[^A-Za-z].*//' || true)"
   printf '  [%3ds] status: %s\n' "$elapsed" "${status:-?}"
   case "$status" in
     Ready)

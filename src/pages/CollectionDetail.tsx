@@ -1,7 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, PlayCircle, Edit2, ListChecks, BookOpen, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
+  PlayCircle,
+  Edit2,
+  ListChecks,
+  BookOpen,
+  X,
+  Globe2,
+  Search,
+  Copy,
+} from 'lucide-react';
 import {
   CollectionService,
   type Collection,
@@ -40,7 +52,10 @@ const CollectionDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
+  const [addTab, setAddTab] = useState<'mine' | 'public'>('mine');
   const [myDecks, setMyDecks] = useState<Deck[]>([]);
+  const [publicDecks, setPublicDecks] = useState<Deck[] | null>(null);
+  const [publicSearch, setPublicSearch] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
 
   const [quizOpen, setQuizOpen] = useState(false);
@@ -84,12 +99,41 @@ const CollectionDetail: React.FC = () => {
 
   const openAdd = async () => {
     setAddOpen(true);
+    setAddTab('mine');
     try {
       setMyDecks(await DeckService.getUserDecks(currentUser!.id));
     } catch (error) {
       console.error(error);
     }
   };
+
+  // Public decks are loaded lazily the first time the public tab is opened.
+  const openPublicTab = async () => {
+    setAddTab('public');
+    if (publicDecks !== null) return;
+    try {
+      setPublicDecks(await DeckService.getPublicDecks());
+    } catch (error) {
+      console.error(error);
+      setPublicDecks([]);
+    }
+  };
+
+  // Only show public decks owned by other users — own decks live in the "mine" tab.
+  const addablePublicDecks = useMemo(() => {
+    const q = publicSearch.trim().toLowerCase();
+    return (publicDecks ?? [])
+      .filter((d) => d.ownerId !== currentUser?.id)
+      .filter((d) => {
+        if (!q) return true;
+        return (
+          d.title.toLowerCase().includes(q) ||
+          normalizeCategory(d.category).toLowerCase().includes(q) ||
+          (d.ownerName ?? '').toLowerCase().includes(q) ||
+          d.tags.some((tag) => tag.toLowerCase().includes(q))
+        );
+      });
+  }, [publicDecks, publicSearch, currentUser?.id]);
 
   const handleAddDeck = async (deck: Deck) => {
     if (!currentUser || !collection) return;
@@ -98,6 +142,35 @@ const CollectionDetail: React.FC = () => {
       await CollectionService.addDeck(currentUser.id, collection.id, deck.id, decks.length);
       setDecks((prev) => [...prev, { ...deck, orderIndex: prev.length }]);
       setCollection((prev) => (prev ? { ...prev, deckCount: prev.deckCount + 1 } : prev));
+    } catch (error) {
+      console.error(error);
+      toast({ title: t('collections.updateError'), variant: 'destructive' });
+    } finally {
+      setAdding(null);
+    }
+  };
+
+  // Clone a public deck into the user's own decks, then link the copy to this
+  // collection (membership requires the deck to be owned by the caller).
+  const handleAddPublicDeck = async (deck: Deck) => {
+    if (!currentUser || !collection) return;
+    setAdding(deck.id);
+    try {
+      const newDeckId = await DeckService.copyDeck(currentUser.id, deck.id);
+      await CollectionService.addDeck(currentUser.id, collection.id, newDeckId, decks.length);
+      setDecks((prev) => [
+        ...prev,
+        {
+          ...deck,
+          id: newDeckId,
+          ownerId: currentUser.id,
+          isPublic: false,
+          orderIndex: prev.length,
+        },
+      ]);
+      setCollection((prev) => (prev ? { ...prev, deckCount: prev.deckCount + 1 } : prev));
+      setMyDecks([]);
+      toast({ title: t('collections.addPublicSuccess') });
     } catch (error) {
       console.error(error);
       toast({ title: t('collections.updateError'), variant: 'destructive' });
@@ -355,26 +428,112 @@ const CollectionDetail: React.FC = () => {
           <DialogHeader>
             <DialogTitle>{t('collections.addDeckTitle')}</DialogTitle>
           </DialogHeader>
-          {addableDecks.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t('collections.addDeckEmpty')}
-            </p>
-          ) : (
-            <div className="max-h-72 divide-y divide-border/60 overflow-y-auto rounded-lg border border-border/60">
-              {addableDecks.map((deck) => (
-                <div key={deck.id} className="flex items-center justify-between gap-2 p-3 text-sm">
-                  <span className="min-w-0 truncate font-medium">{deck.title}</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={adding === deck.id}
-                    onClick={() => handleAddDeck(deck)}
+
+          {/* Source toggle: own decks vs. public decks from the community */}
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/60 p-1">
+            <button
+              type="button"
+              onClick={() => setAddTab('mine')}
+              className={cn(
+                'flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition',
+                addTab === 'mine'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <BookOpen className="h-4 w-4" aria-hidden />
+              {t('collections.addTabMine')}
+            </button>
+            <button
+              type="button"
+              onClick={openPublicTab}
+              className={cn(
+                'flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition',
+                addTab === 'public'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Globe2 className="h-4 w-4" aria-hidden />
+              {t('collections.addTabPublic')}
+            </button>
+          </div>
+
+          {addTab === 'mine' ? (
+            addableDecks.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {t('collections.addDeckEmpty')}
+              </p>
+            ) : (
+              <div className="max-h-72 divide-y divide-border/60 overflow-y-auto rounded-lg border border-border/60">
+                {addableDecks.map((deck) => (
+                  <div
+                    key={deck.id}
+                    className="flex items-center justify-between gap-2 p-3 text-sm"
                   >
-                    <Plus className="mr-1 h-4 w-4" />
-                    {t('collections.addDeck')}
-                  </Button>
+                    <span className="min-w-0 truncate font-medium">{deck.title}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={adding === deck.id}
+                      onClick={() => handleAddDeck(deck)}
+                    >
+                      <Plus className="mr-1 h-4 w-4" />
+                      {t('collections.addDeck')}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : (
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={publicSearch}
+                  onChange={(e) => setPublicSearch(e.target.value)}
+                  placeholder={t('publicDecks.searchPlaceholder')}
+                  className="pl-10"
+                  aria-label={t('publicDecks.searchPlaceholder')}
+                />
+              </div>
+              {publicDecks === null ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {t('common.loading')}
+                </p>
+              ) : addablePublicDecks.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {t('collections.addPublicEmpty')}
+                </p>
+              ) : (
+                <div className="max-h-72 divide-y divide-border/60 overflow-y-auto rounded-lg border border-border/60">
+                  {addablePublicDecks.map((deck) => (
+                    <div
+                      key={deck.id}
+                      className="flex items-center justify-between gap-2 p-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{deck.title}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {t('publicDecks.owner', {
+                            name: deck.ownerName || t('leaderboard.anonymous'),
+                          })}{' '}
+                          · {t('dashboard.cardCount', { count: deck.cardCount })}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={adding === deck.id}
+                        onClick={() => handleAddPublicDeck(deck)}
+                      >
+                        <Copy className="mr-1 h-4 w-4" />
+                        {t('collections.addPublicAction')}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
           <DialogFooter>
