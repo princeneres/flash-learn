@@ -347,7 +347,7 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
         {renderBody()}
-        <DialogFooter>{renderFooter()}</DialogFooter>
+        <DialogFooter className="mt-6">{renderFooter()}</DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -45,9 +45,9 @@ const MainLayout: React.FC = () => {
 
   const navItems = [
     { to: '/dashboard', label: t('dashboard.title'), icon: LayoutDashboard },
+    { to: '/public', label: t('publicDecks.title'), icon: Globe },
     { to: '/stats', label: t('stats.navLabel'), icon: BarChart3 },
     { to: '/leaderboard', label: t('leaderboard.title'), icon: Trophy },
-    { to: '/public', label: t('publicDecks.title'), icon: Globe },
   ];
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -103,8 +103,12 @@ const MainLayout: React.FC = () => {
                         <UserIcon className="h-4 w-4" />
                       </span>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold leading-tight">{displayName}</p>
-                        <p className="truncate text-xs text-muted-foreground">{currentUser.email}</p>
+                        <p className="truncate text-sm font-semibold leading-tight">
+                          {displayName}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {currentUser.email}
+                        </p>
                       </div>
                     </div>
                     <DropdownMenuSeparator />
@@ -150,7 +154,10 @@ const MainLayout: React.FC = () => {
                         {t('menu.account')}
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="text-destructive focus:text-destructive"
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       {t('auth.logout')}
                     </DropdownMenuItem>
