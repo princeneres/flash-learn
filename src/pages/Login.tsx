@@ -140,7 +140,15 @@ const Login: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">{t('auth.password')}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">{t('auth.password')}</Label>
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm font-medium text-primary transition hover:text-primary/80"
+                    >
+                      {t('auth.forgotPassword')}
+                    </Link>
+                  </div>
                   <Input
                     id="password"
                     name="password"
