@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -25,6 +26,8 @@ import { AVAILABLE_LANGUAGES } from '../i18n';
 import { Card, CardContent } from '../components/ui/card';
 import { AiCreditsSettings } from '../components/AiCreditsSettings';
 import { PlanSettings } from '../components/PlanSettings';
+import { McpSettings } from '../components/McpSettings';
+import { MONETIZATION_ENABLED } from '../lib/features';
 import { useTheme } from '../components/theme-provider';
 import { useSound } from '../hooks/useSound';
 import { AvatarService } from '../services/AvatarService';
@@ -43,6 +46,7 @@ const Profile: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const { enabled: soundEnabled, toggle: toggleSound } = useSound();
   const { toast } = useToast();
+  const location = useLocation();
 
   const [userData, setUserData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,6 +90,14 @@ const Profile: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Scroll to a section when reached via an anchor link (e.g. /profile#mcp from
+  // the nav menu). Runs once data is loaded so the target element exists.
+  useEffect(() => {
+    if (loading || !location.hash) return;
+    const el = document.querySelector(location.hash);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [loading, location.hash]);
 
   const changeLanguage = async (lang: string) => {
     i18n.changeLanguage(lang);
@@ -376,8 +388,13 @@ const Profile: React.FC = () => {
               />
             </div>
 
-            <PlanSettings />
-            <AiCreditsSettings />
+            {MONETIZATION_ENABLED && (
+              <>
+                <PlanSettings />
+                <AiCreditsSettings />
+              </>
+            )}
+            <McpSettings />
           </div>
         </CardContent>
       </Card>

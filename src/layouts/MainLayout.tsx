@@ -12,6 +12,7 @@ import {
   Lightbulb,
   LogOut,
   Moon,
+  Plug,
   Settings,
   Sun,
   Trophy,
@@ -167,6 +168,12 @@ const MainLayout: React.FC = () => {
                       <Link to="/profile">
                         <Settings className="mr-2 h-4 w-4 text-muted-foreground" />
                         {t('menu.account')}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile#mcp">
+                        <Plug className="mr-2 h-4 w-4 text-muted-foreground" />
+                        {t('menu.mcp')}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setSuggestionOpen(true)}>

@@ -442,7 +442,8 @@
   "menu": {
     "navigation": "Navegação",
     "preferences": "Preferências",
-    "account": "Perfil e configurações"
+    "account": "Perfil e configurações",
+    "mcp": "Conectar IA (MCP)"
   },
   "suggestion": {
     "menuItem": "Sugerir uma melhoria",
@@ -675,5 +676,15 @@
       "backToCollection": "Voltar à coleção",
       "saveError": "Falha ao registrar tentativa"
     }
+  },
+  "mcp": {
+    "title": "Conectar à sua IA (MCP)",
+    "description": "Crie decks, collections e quizzes conversando com o Claude ou qualquer cliente MCP. Configuração rápida, em dois passos.",
+    "step1Title": "1. Registre o servidor no seu cliente MCP",
+    "step1Hint": "Cole este bloco na configuração do seu cliente (ex.: claude_desktop_config.json).",
+    "step2Title": "2. Conecte sua conta (apenas uma vez)",
+    "step2Hint": "Rode este comando no terminal. Ele abre o navegador, usa sua sessão atual e salva o login — nenhum token para copiar.",
+    "copyConfig": "Copiar config",
+    "copyCommand": "Copiar comando"
   }
 }

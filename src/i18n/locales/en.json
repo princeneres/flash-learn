@@ -442,7 +442,8 @@
   "menu": {
     "navigation": "Navigation",
     "preferences": "Preferences",
-    "account": "Profile & settings"
+    "account": "Profile & settings",
+    "mcp": "Connect AI (MCP)"
   },
   "suggestion": {
     "menuItem": "Suggest an improvement",
@@ -675,5 +676,15 @@
       "backToCollection": "Back to collection",
       "saveError": "Failed to record attempt"
     }
+  },
+  "mcp": {
+    "title": "Connect to your AI (MCP)",
+    "description": "Create decks, collections and quizzes by chatting with Claude or any MCP client. Quick two-step setup.",
+    "step1Title": "1. Register the server in your MCP client",
+    "step1Hint": "Paste this block into your client config (e.g. claude_desktop_config.json).",
+    "step2Title": "2. Connect your account (one time only)",
+    "step2Hint": "Run this command in your terminal. It opens the browser, uses your current session and saves the login — no token to copy.",
+    "copyConfig": "Copy config",
+    "copyCommand": "Copy command"
   }
 }
