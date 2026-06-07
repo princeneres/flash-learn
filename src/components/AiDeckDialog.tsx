@@ -10,12 +10,10 @@ import {
   type Difficulty,
   type GeneratedCard,
 } from '../services/LlmService';
-import { AiCreditService } from '../services/AiCreditService';
 import { useAiCredits } from '../hooks/useAiCredits';
 import { DeckService } from '../services/DeckService';
 import { CardService } from '../services/CardService';
 import { parsePlanError, planErrorTitle } from '../lib/planErrors';
-import { MONETIZATION_ENABLED } from '../lib/features';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -50,19 +48,6 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
   const { balance, refresh: refreshCredits } = useAiCredits();
   const hasCredits = (balance ?? 0) > 0;
   const maxAllowed = Math.max(0, Math.min(maxCardsPerDeck, totalRoom, MAX_CARDS_PER_GENERATION));
-  const [buying, setBuying] = useState(false);
-
-  const handleBuyCredits = async () => {
-    setBuying(true);
-    try {
-      const url = await AiCreditService.startCheckout('popular');
-      window.location.href = url;
-    } catch (err) {
-      console.error(err);
-      toast({ title: t('ai.credits.checkoutError'), variant: 'destructive' });
-      setBuying(false);
-    }
-  };
 
   const defaultLanguage = i18n.language?.startsWith('pt') ? 'Português' : 'English';
 
@@ -180,12 +165,6 @@ export const AiDeckDialog: React.FC<AiDeckDialogProps> = ({
       return (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">{t('ai.generate.noCredits')}</p>
-          {MONETIZATION_ENABLED && (
-            <Button type="button" onClick={handleBuyCredits} disabled={buying}>
-              <Coins className="mr-2 h-4 w-4" />
-              {buying ? t('ai.credits.buying') : t('ai.generate.buyCredits')}
-            </Button>
-          )}
         </div>
       );
     }
