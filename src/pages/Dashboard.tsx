@@ -412,10 +412,10 @@ const Dashboard: React.FC = () => {
             <Download className="w-5 h-5 mr-2" />
             {t('dashboard.exportAll')}
           </Button>
-          <Button variant="outline" onClick={() => setIsAiOpen(true)} disabled={atDeckLimit}>
+          {/* <Button variant="outline" onClick={() => setIsAiOpen(true)} disabled={atDeckLimit}>
             <Sparkles className="w-5 h-5 mr-2" />
             {t('ai.generate.button')}
-          </Button>
+          </Button> */}
           <Button
             variant="warm"
             onClick={() => setIsModalOpen(true)}
@@ -540,10 +540,10 @@ const Dashboard: React.FC = () => {
               <Plus className="mr-2 h-4 w-4" />
               {t('dashboard.createDeck')}
             </Button>
-            <Button variant="outline" onClick={() => setIsAiOpen(true)} disabled={atDeckLimit}>
+            {/* <Button variant="outline" onClick={() => setIsAiOpen(true)} disabled={atDeckLimit}>
               <Sparkles className="mr-2 h-4 w-4" />
               {t('ai.generate.button')}
-            </Button>
+            </Button> */}
           </CardContent>
         </Card>
       ) : (
