@@ -60,6 +60,84 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_credit_ledger: {
+        Row: {
+          abacate_id: string | null
+          created_at: string
+          delta: number
+          id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          abacate_id?: string | null
+          created_at?: string
+          delta: number
+          id?: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          abacate_id?: string | null
+          created_at?: string
+          delta?: number
+          id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_credit_orders: {
+        Row: {
+          abacate_id: string | null
+          amount_cents: number
+          created_at: string
+          credits: number
+          id: string
+          pack_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          abacate_id?: string | null
+          amount_cents: number
+          created_at?: string
+          credits: number
+          id?: string
+          pack_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          abacate_id?: string | null
+          amount_cents?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          pack_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_credits: {
+        Row: {
+          balance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       card_media: {
         Row: {
           card_id: string
@@ -148,6 +226,87 @@ export type Database = {
           },
         ]
       }
+      collections: {
+        Row: {
+          category: string | null
+          cover_color: string | null
+          created_at: string
+          deck_count: number
+          description: string | null
+          id: string
+          is_public: boolean
+          owner_id: string
+          owner_name: string | null
+          tags: string[]
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          cover_color?: string | null
+          created_at?: string
+          deck_count?: number
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          owner_id: string
+          owner_name?: string | null
+          tags?: string[]
+          title: string
+        }
+        Update: {
+          category?: string | null
+          cover_color?: string | null
+          created_at?: string
+          deck_count?: number
+          description?: string | null
+          id?: string
+          is_public?: boolean
+          owner_id?: string
+          owner_name?: string | null
+          tags?: string[]
+          title?: string
+        }
+        Relationships: []
+      }
+      deck_collections: {
+        Row: {
+          collection_id: string
+          created_at: string
+          deck_id: string
+          order_index: number
+          owner_id: string
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          deck_id: string
+          order_index?: number
+          owner_id: string
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          deck_id?: string
+          order_index?: number
+          owner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_collections_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deck_collections_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deck_favorites: {
         Row: {
           created_at: string
@@ -207,6 +366,36 @@ export type Database = {
           srs_settings?: Json
           tags?: string[]
           title?: string
+        }
+        Relationships: []
+      }
+      feature_suggestions: {
+        Row: {
+          category: string
+          context: Json
+          created_at: string
+          id: string
+          message: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          context?: Json
+          created_at?: string
+          id?: string
+          message: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          context?: Json
+          created_at?: string
+          id?: string
+          message?: string
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -288,6 +477,142 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_attempts: {
+        Row: {
+          answers: Json
+          collection_id: string | null
+          completed_at: string
+          id: string
+          owner_id: string
+          quiz_id: string | null
+          score: number
+          total: number
+        }
+        Insert: {
+          answers?: Json
+          collection_id?: string | null
+          completed_at?: string
+          id?: string
+          owner_id: string
+          quiz_id?: string | null
+          score?: number
+          total?: number
+        }
+        Update: {
+          answers?: Json
+          collection_id?: string | null
+          completed_at?: string
+          id?: string
+          owner_id?: string
+          quiz_id?: string | null
+          score?: number
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          created_at: string
+          explanation: string | null
+          id: string
+          kind: string
+          options: Json
+          order_index: number
+          owner_id: string
+          prompt: string
+          quiz_id: string
+        }
+        Insert: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          kind?: string
+          options?: Json
+          order_index?: number
+          owner_id: string
+          prompt: string
+          quiz_id: string
+        }
+        Update: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          kind?: string
+          options?: Json
+          order_index?: number
+          owner_id?: string
+          prompt?: string
+          quiz_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          collection_id: string
+          created_at: string
+          description: string | null
+          id: string
+          order_index: number
+          owner_id: string
+          pass_threshold: number | null
+          question_count: number
+          title: string
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          owner_id: string
+          pass_threshold?: number | null
+          question_count?: number
+          title: string
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          owner_id?: string
+          pass_threshold?: number | null
+          question_count?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_logs: {
         Row: {
           card_id: string | null
@@ -339,6 +664,44 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          abacate_subscription_id: string | null
+          created_at: string
+          current_period_end: string | null
+          plan_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          abacate_subscription_id?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          plan_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          abacate_subscription_id?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          plan_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_plans: {
         Row: {
           activated_at: string
@@ -373,6 +736,74 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_subscription: {
+        Args: {
+          p_abacate_id: string
+          p_period_end: string
+          p_plan: string
+          p_status: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      cancel_subscription: { Args: { p_user: string }; Returns: undefined }
+      credit_ai: {
+        Args: {
+          p_abacate_id?: string
+          p_amount: number
+          p_reason: string
+          p_user: string
+        }
+        Returns: number
+      }
+      debit_ai_credit: { Args: { p_user: string }; Returns: number }
+      get_ai_credits: { Args: never; Returns: number }
+      get_collection_decks: {
+        Args: { p_collection_id: string }
+        Returns: {
+          card_count: number
+          category: string
+          created_at: string
+          id: string
+          is_public: boolean
+          order_index: number
+          owner_id: string
+          owner_name: string
+          srs_settings: Json
+          tags: string[]
+          title: string
+        }[]
+      }
+      get_collection_detail: {
+        Args: { p_collection_id: string }
+        Returns: {
+          category: string
+          cover_color: string
+          created_at: string
+          deck_count: number
+          description: string
+          id: string
+          is_public: boolean
+          owner_id: string
+          owner_name: string
+          tags: string[]
+          title: string
+        }[]
+      }
+      get_collection_quizzes: {
+        Args: { p_collection_id: string }
+        Returns: {
+          collection_id: string
+          created_at: string
+          description: string
+          id: string
+          order_index: number
+          owner_id: string
+          pass_threshold: number
+          question_count: number
+          title: string
+        }[]
+      }
       get_deck_detail: {
         Args: { p_deck_id: string }
         Returns: {
@@ -414,6 +845,22 @@ export type Database = {
         }[]
       }
       get_my_limits: { Args: never; Returns: Json }
+      get_public_collections: {
+        Args: never
+        Returns: {
+          category: string
+          cover_color: string
+          created_at: string
+          deck_count: number
+          description: string
+          id: string
+          is_public: boolean
+          owner_id: string
+          owner_name: string
+          tags: string[]
+          title: string
+        }[]
+      }
       get_public_decks: {
         Args: never
         Returns: {
