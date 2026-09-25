@@ -1,29 +1,33 @@
-# Flash-Learn MCP Server
+# Flash Learn MCP Server
 
-Servidor [MCP](https://modelcontextprotocol.io) que permite criar **decks**, **collections** e **quizzes** do Flash-Learn conversacionalmente (via Claude ou qualquer cliente MCP).
+An [MCP](https://modelcontextprotocol.io) server for creating Flash Learn **decks**, **collections** and
+**quizzes** in conversation, from Claude or any other MCP client.
 
-## Como as validações funcionam
+## How permissions work
 
-O servidor se autentica **como o usuário** usando a `anon key` pública + o **access token (JWT)** dele — nunca a service role key. Por isso, **todas as regras já existentes são herdadas automaticamente do banco**:
+The server signs in **as you**, using the public anon key plus your session token. It never uses the
+service-role key, so every rule the database already enforces applies automatically:
 
-- **Ownership / visibilidade**: Row Level Security garante que você só cria/lê o que é seu (ou público).
-- **Limites de plano**: os triggers `enforce_deck_quota` e `enforce_card_quota` aplicam os limites de free/Pro (ex.: free = 10 decks, 100 cards/deck, 1000 cards totais). Ao estourar, o erro vira uma mensagem clara.
-- `owner_id` é sempre derivado da sessão, nunca aceito como parâmetro — não há como criar conteúdo em nome de outro usuário.
+- **Ownership and visibility.** Row Level Security lets you create and read only your own content, plus public
+  content.
+- **Plan limits.** The `enforce_deck_quota` and `enforce_card_quota` triggers apply the plan's deck and card
+  limits. When a limit is reached, the tool returns a clear error message.
+- **No impersonation.** `owner_id` always comes from the session and is never accepted as a parameter.
 
-Criar conteúdo via MCP é CRUD normal (igual à UI): **não consome créditos de IA**.
+Creating content through MCP is ordinary CRUD, exactly like the UI.
 
-## Tools disponíveis
+## Tools
 
-| Tool                     | Descrição                                       |
-| ------------------------ | ----------------------------------------------- |
-| `create_deck`            | Cria um deck (opcionalmente com cards iniciais) |
-| `add_cards`              | Adiciona cards a um deck existente              |
-| `list_decks`             | Lista seus decks                                |
-| `create_collection`      | Cria uma collection                             |
-| `add_deck_to_collection` | Vincula um deck a uma collection                |
-| `list_collections`       | Lista suas collections                          |
-| `create_quiz`            | Cria um quiz dentro de uma collection           |
-| `add_quiz_questions`     | Adiciona perguntas a um quiz                    |
+| Tool                     | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `create_deck`            | Create a deck, optionally with initial cards |
+| `add_cards`              | Add cards to an existing deck                |
+| `list_decks`             | List your decks                              |
+| `create_collection`      | Create a collection                          |
+| `add_deck_to_collection` | Link a deck to a collection                  |
+| `list_collections`       | List your collections                        |
+| `create_quiz`            | Create a quiz inside a collection            |
+| `add_quiz_questions`     | Add questions to a quiz                      |
 
 ## Build
 
@@ -33,52 +37,52 @@ npm install
 npm run build
 ```
 
-## Login (sem copiar token)
-
-O usuário **não precisa copiar nenhum token**. Basta rodar:
+## Sign in once, no token copying
 
 ```bash
-npx flash-learn-mcp login
-# (em dev local: node dist/index.js login)
+node dist/index.js login
 ```
 
-Isso abre o navegador na página `/connect-mcp` do app. Como o usuário já está logado no Flash-Learn (inclusive via Google/GitHub), a página entrega a sessão de volta ao comando, que a salva em `~/.flash-learn-mcp/session.json`. O servidor MCP lê esse arquivo e **renova o access token automaticamente** — login é feito uma vez só.
+The command opens the app's `/connect-mcp` page in your browser. Since you are already signed in there (with
+email, Google or GitHub), the page hands the session back to the command, which stores it in
+`~/.flash-learn-mcp/session.json`. The server reads that file and refreshes the access token on its own, so you
+only sign in once.
 
-> Pré-requisito: estar logado no app no navegador. Se não estiver, a página pede login e você reabre o link mostrado no terminal.
+> If you are not signed in to the app in the browser, the page asks you to sign in first. Then reopen the link
+> printed in the terminal.
 
-## Configuração no cliente MCP
+## Client configuration
 
-Variáveis de ambiente necessárias:
+Environment variables:
 
-- `SUPABASE_URL` — URL do projeto (mesma do app, `VITE_SUPABASE_URL`)
-- `SUPABASE_ANON_KEY` — anon key pública (mesma do `VITE_SUPABASE_ANON_KEY`)
-- `FLASH_LEARN_APP_URL` — (opcional) URL do app para o login; default `https://flashlearn.princeneres.dev`. Sobrescreva só para apontar a um ambiente local/staging.
+| Variable                                          | Required | Description                                                                                                           |
+| ------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------- |
+| `SUPABASE_URL`                                    | Yes      | Supabase project URL, same as the app's `VITE_SUPABASE_URL`                                                           |
+| `SUPABASE_ANON_KEY`                               | Yes      | Public anon key, same as the app's `VITE_SUPABASE_ANON_KEY`                                                           |
+| `FLASH_LEARN_APP_URL`                             | No       | App URL used by `login`. Defaults to `https://flashlearn.princeneres.dev`; override it for a local or self-hosted app |
+| `SUPABASE_ACCESS_TOKEN`, `SUPABASE_REFRESH_TOKEN` | No       | Fallback for CI or development. When set, they take precedence over the saved `login` session                         |
 
-Opcionais (fallback para CI/devs; têm prioridade sobre o `login` se definidos):
-
-- `SUPABASE_ACCESS_TOKEN` / `SUPABASE_REFRESH_TOKEN`
-
-### Exemplo — Claude Desktop (`claude_desktop_config.json`)
+### Example: Claude Desktop (`claude_desktop_config.json`)
 
 ```json
 {
   "mcpServers": {
     "flash-learn": {
       "command": "node",
-      "args": ["/caminho/para/flash-learn/mcp-server/dist/index.js"],
+      "args": ["/path/to/flash-learn/mcp-server/dist/index.js"],
       "env": {
-        "SUPABASE_URL": "https://xxxx.supabase.co",
-        "SUPABASE_ANON_KEY": "ey..."
+        "SUPABASE_URL": "https://your-project-ref.supabase.co",
+        "SUPABASE_ANON_KEY": "your-anon-key"
       }
     }
   }
 }
 ```
 
-Depois de registrar o servidor, rode `npx flash-learn-mcp login` uma vez para conectar a conta.
+After registering the server, run `node dist/index.js login` once to connect your account.
 
-## Teste local
+## Local testing
 
 ```bash
-npm run inspect   # abre o MCP Inspector
+npm run inspect   # opens the MCP Inspector
 ```

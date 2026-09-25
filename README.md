@@ -1,178 +1,234 @@
 <div align="center">
 
-<img src="public/logo.png" alt="Flash Learn logo" width="140" />
+<img src="public/logo.png" alt="Flash Learn logo" width="112" />
 
 # Flash Learn
 
-**An open-source, Anki-inspired flashcard app with spaced repetition, rich-content cards, and community decks.**
+**Spaced-repetition flashcards with rich cards, collections, quizzes and community decks.**
 
+Flash Learn turns what you want to learn into flashcards and schedules each review just before you would forget it.
+Web app, installable as a PWA, in English and Brazilian Portuguese.
+
+[![Live app](https://img.shields.io/badge/app-flashlearn.princeneres.dev-F5B301)](https://flashlearn.princeneres.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-[![Supabase](https://img.shields.io/badge/Supabase-2-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](#license)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+[Live app](https://flashlearn.princeneres.dev) ·
+[Features](#features) ·
+[Screenshots](#screenshots) ·
+[Self-hosting](#getting-started) ·
+[MCP server](mcp-server/README.md)
+
+<img src="docs/screenshots/study.gif" alt="Study session: reveal the answer, rate it, and move to the next card" width="860" />
 
 </div>
 
----
+## Features
 
-## ✨ About
+**Study**
 
-Flash Learn is a modern, web-based flashcard platform designed for serious learners. It combines the proven **SM-2 spaced repetition algorithm** with a polished UI, rich-content cards (images, audio, links, formatting), Anki interoperability, and a gamification layer to keep daily review streaks alive.
+- **Spaced repetition.** An SM-2-based scheduler with Anki-style learning and relearning steps. Every deck can
+  tune its own steps, interval cap and daily new-card limit.
+- **Four-button grading** (Again, Hard, Good, Easy), with the next interval shown on each button.
+- **Cloze deletions** (`{{c1::answer}}`) and **type-the-answer** cards for active recall.
+- **Rich cards.** TipTap editor with headings, lists, code blocks, links, images, audio and KaTeX math.
+- **Keyboard and touch friendly.** <kbd>Space</kbd> reveals, <kbd>1</kbd>–<kbd>4</kbd> grade, and the session
+  layout fits phone screens.
 
-The project is fully open source and built with a TypeScript-first, accessibility-aware stack. Self-host it, fork it, or contribute back.
+**Organize**
 
-## 🚀 Features
+- **Collections** group related decks and hold **quizzes** with single-choice, multiple-choice and true/false
+  questions, explanations and a pass threshold.
+- **Public decks.** Publish a deck, browse and favorite decks from other learners, or copy one into your account.
+- **Import and export** decks, media included, as portable `.fldeck.zip` bundles.
+- **MCP server.** Create decks, collections and quizzes from Claude or any MCP client. See
+  [`mcp-server/`](mcp-server/README.md).
 
-- 🎯 **Adaptive spaced repetition** — SM-2 algorithm schedules each card at the moment you're about to forget it.
-- 📝 **Rich-content cards** — TipTap WYSIWYG editor with headings, lists, quotes, code blocks, links, images, and inline audio.
-- 🔁 **Anki interoperability** — Import `.apkg`, `.colpkg`, `.csv`, `.tsv`, or `.txt` files (including images, audio, cloze deletions, and HTML formatting).
-- 📦 **Deck export** — Export a single deck or all of your decks to a portable `.fldeck.zip` bundle with embedded media.
-- 🗂️ **Choose where media lives** — Save card images and audio inside your browser (IndexedDB) or pick a real folder on your computer via the File System Access API.
-- 👥 **Community decks** — Publish decks publicly and discover what others are studying.
-- 🏆 **Gamification** — Daily streaks, achievements, leaderboards, and a points system.
-- 🌍 **Internationalized** — Full English and Portuguese (BR) translations, easy to extend.
-- 🌗 **Light and dark themes** out of the box.
-- 📱 **PWA-ready** — Installable, with an offline-first service worker.
-- 🔐 **Authentication** — Firebase Auth with email/password, Google, and GitHub providers.
+**Stay consistent**
 
-## 🛠️ Tech Stack
+- **Statistics:** reviews over time, study heatmap, accuracy, due forecast, new vs. review, best study hours and a
+  category breakdown.
+- **Gamification:** points, daily streaks, achievements and a leaderboard. Scores are computed server-side so
+  they can't be forged from the browser.
+- **Installable PWA** with offline support, **light and dark themes**, sound effects and **English / Portuguese**
+  translations.
 
-| Layer | Tools |
-|-------|-------|
-| **Framework** | React 19 + Vite 7 + TypeScript 5 |
-| **Routing** | React Router 7 |
-| **Styling** | Tailwind CSS, Radix UI primitives, shadcn-style components |
-| **Editor** | TipTap 3 (StarterKit, Image, Link extensions) |
-| **Backend** | Supabase (Auth + Postgres with RLS + Storage) |
-| **Media** | IndexedDB, File System Access API, JSZip |
-| **Anki parsing** | sql.js (SQLite in WASM) + fzstd (Zstandard) |
-| **i18n** | i18next + react-i18next |
-| **Sanitization** | DOMPurify |
-| **PWA** | vite-plugin-pwa + Workbox |
+**Accounts**
 
-## 📦 Getting Started
+- Email and password, Google and GitHub sign-in, and password reset by email.
+- Every table is protected by Postgres Row Level Security. Plan quotas are enforced by database triggers.
+
+## Screenshots
+
+| Dashboard                                                                              | Study session                                                    |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| ![Deck dashboard with favorites and category filters](docs/screenshots/dashboard.png)  | ![Study card with the answer hidden](docs/screenshots/study.png) |
+| **Statistics**                                                                         | **Leaderboard**                                                  |
+| ![Statistics page with streak, accuracy and review charts](docs/screenshots/stats.png) | ![Leaderboard podium](docs/screenshots/leaderboard.png)          |
+| **Collection with decks and a quiz**                                                   | **Quiz**                                                         |
+| ![Collection detail](docs/screenshots/collection.png)                                  | ![Multiple-choice quiz question](docs/screenshots/quiz.png)      |
+| **Public decks**                                                                       | **Deck editor**                                                  |
+| ![Community decks](docs/screenshots/public.png)                                        | ![Deck detail with card list](docs/screenshots/deck.png)         |
+
+<details>
+<summary><strong>Dark mode, mobile and landing page</strong></summary>
+
+| Dark dashboard                                                 | Dark statistics                                             |
+| -------------------------------------------------------------- | ----------------------------------------------------------- |
+| ![Dashboard in dark mode](docs/screenshots/dashboard-dark.png) | ![Statistics in dark mode](docs/screenshots/stats-dark.png) |
+
+<p>
+  <img src="docs/screenshots/m-dashboard.png" alt="Mobile dashboard" width="260" />
+  <img src="docs/screenshots/m-study.png" alt="Mobile study card" width="260" />
+  <img src="docs/screenshots/m-study-answer.png" alt="Mobile study card with grading buttons" width="260" />
+</p>
+
+![Landing page](docs/screenshots/landing.png)
+
+</details>
+
+> The screenshots use fictional demo accounts and data.
+
+## Tech stack
+
+| Layer    | Tools                                                             |
+| -------- | ----------------------------------------------------------------- |
+| Frontend | React 19, Vite 7, TypeScript 5, React Router 7                    |
+| UI       | Tailwind CSS, Radix UI primitives, lucide-react, Recharts         |
+| Editor   | TipTap 3, KaTeX, DOMPurify                                        |
+| Backend  | Supabase: Auth, Postgres with RLS, Storage, Edge Functions (Deno) |
+| i18n     | i18next, react-i18next                                            |
+| PWA      | vite-plugin-pwa, Workbox                                          |
+| Hosting  | Vercel (static SPA)                                               |
+
+## Getting started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) 20+
-- [pnpm](https://pnpm.io) 10+
-- A free [Supabase](https://supabase.com) account (no credit card needed)
+- [Node.js](https://nodejs.org) 20+ and [pnpm](https://pnpm.io) 10+
+- A [Supabase](https://supabase.com) project (the free tier is enough)
+- The [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), to apply migrations and
+  deploy edge functions
+- Optional: [Docker](https://www.docker.com), to run the whole backend locally with `supabase start`
 
-### Installation
+### 1. Install
 
 ```bash
-git clone https://github.com/<your-fork>/flash-learn.git
+git clone https://github.com/princeneres/flash-learn.git
 cd flash-learn
 pnpm install
 ```
 
-### Configuration
+### 2. Create the database
 
-1. Create a new project at <https://supabase.com>.
-2. In **Project Settings → API**, copy the **Project URL** and **anon public key** into a new `.env` at the repo root:
-
-   ```env
-   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key-here
-   ```
-
-3. In **SQL Editor**, paste and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql). This creates the `profiles`, `decks`, `cards`, and `achievements` tables, triggers, and Row Level Security policies.
-4. In **Storage**, create a new **private** bucket called `media`. The RLS policy on `storage.objects` from the migration already restricts access to each user's own folder.
-5. In **Authentication → Providers**, enable **Google** and **GitHub** (paste OAuth client credentials from each provider). Email/password is enabled by default.
-6. In **Authentication → URL Configuration**, set:
-   - **Site URL**: `http://localhost:5173`
-   - **Redirect URLs**: `http://localhost:5173/**` (add your production URL too when deploying).
-
-### Running locally
+Link the CLI to your project and apply every migration in `supabase/migrations/`:
 
 ```bash
-pnpm dev          # start the dev server (http://localhost:5173)
-pnpm build        # type-check + production build
-pnpm preview      # serve the production build
-pnpm lint         # run ESLint
+supabase link --project-ref <your-project-ref>
+supabase db push
 ```
 
-## 🛡️ Security model
+Or run everything locally instead: `supabase start` applies the migrations to a local stack and prints the local
+URL and keys.
 
-All access is gated by **Postgres Row Level Security** (see `supabase/migrations/0001_init.sql`):
+Deck and card quotas come from the `plans` table. The migrations seed a `free` plan (10 decks, 100 cards per deck,
+1,000 cards in total) and a `pro` plan; tune the limits there.
 
-- `profiles`, `cards`, `achievements`: each row is readable/writable only by its owner.
-- `decks`: owner can read/write; rows marked `is_public = true` are readable by anyone authenticated.
-- `storage.objects` (bucket `media`): scoped to `${uid}/...` paths via a single policy.
+### 3. Configure the app
 
-Storage URLs are **signed** with a 7-day TTL and cached in IndexedDB on the client to avoid extra round-trips.
+Copy `.env.example` to `.env` and fill in the project URL and anon key from **Project Settings → API**:
 
-## 🗂️ Project Structure
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+In the Supabase dashboard:
+
+1. **Storage:** nothing to do. The migrations create the private `media` bucket and scope it to each user's
+   folder.
+2. **Authentication → URL Configuration:** set the Site URL to `http://localhost:5173` and add
+   `http://localhost:5173/**` to the redirect URLs (plus your production URL when you deploy).
+3. **Authentication → Providers:** enable Google and GitHub if you want social sign-in.
+
+### 4. Run
+
+```bash
+pnpm dev          # http://localhost:5173
+pnpm build        # type-check and production build
+pnpm preview      # serve the production build
+pnpm lint         # ESLint
+pnpm format       # Prettier
+```
+
+### Optional: edge functions
+
+The core app needs only the database. The edge functions in `supabase/functions/` power optional features and read
+their configuration from Supabase secrets (`supabase secrets set KEY=value`):
+
+| Function                                                | Feature                                                         | Secrets                                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `feature-suggestion`                                    | In-app suggestion form, delivered by email                      | `RESEND_API_KEY`, `SUGGESTIONS_TO_EMAIL`, `SUGGESTIONS_FROM_EMAIL`                                          |
+| `ai-generate`                                           | AI deck generation with per-use credits (UI currently disabled) | `OPENAI_API_KEY`, `OPENAI_MODEL`                                                                            |
+| `buy-credits`, `create-subscription`, `abacate-webhook` | Billing through AbacatePay (UI currently disabled)              | `ABACATEPAY_API_KEY`, `ABACATEPAY_WEBHOOK_SECRET`, `ABACATEPAY_SIGNING_KEY`, `ABACATE_PRODUCT_*`, `APP_URL` |
+
+Deploy them with `supabase functions deploy`.
+
+## Security model
+
+- **Row Level Security everywhere.** Users can read and write only their own rows. Decks and collections marked
+  public are readable by any signed-in user.
+- **Server-side rules.** Points, streaks and achievements are awarded by a `SECURITY DEFINER` function, and
+  direct writes to those profile fields are blocked by a trigger. Plan quotas are enforced by triggers, so they
+  also apply to the MCP server and any other API client.
+- **Private media.** Card images and audio live in a private `media` bucket, scoped to `<user-id>/…` paths and
+  served through signed URLs.
+- **Sanitized content.** Card HTML is sanitized with DOMPurify before rendering.
+- Service-role keys and third-party API keys are used only inside edge functions, never in the browser.
+
+## Project structure
 
 ```
 src/
-├── components/         # Reusable UI (CardEditor, RichContent, PlayAudioButton, ui/)
-├── context/            # React contexts (AuthContext)
-├── i18n/               # i18next setup + locales/{en,pt}.json
-├── lib/                # Firebase init + sanitize helpers
-├── pages/              # Route-level views (Dashboard, DeckDetail, StudySession, Profile, ...)
-└── services/           # Data + domain logic
-    ├── AnkiImportService.ts        # .apkg/.colpkg/.csv parsing
-    ├── CardService.ts              # Card CRUD + review processing
-    ├── DeckService.ts              # Deck CRUD
-    ├── DeckExportService.ts        # Export decks to .fldeck.zip
-    ├── GamificationService.ts      # Points, streaks, achievements
-    ├── LocalDirectoryService.ts    # File System Access API wrapper
-    ├── MediaStorageService.ts      # Supabase Storage wrapper + signed URL cache
-    ├── MediaSyncService.ts         # Legacy audio bundle import/export
-    ├── UserSettingsService.ts      # Per-user settings cache
-    ├── _mappers.ts                 # snake_case ↔ camelCase converters
-    └── srsAlgorithm.ts             # SM-2 spaced repetition
+  pages/            Route views: Landing, Dashboard, DeckDetail, StudySession, Collections,
+                    QuizSession, Stats, Leaderboard, PublicDecks, Profile, auth and legal pages
+  components/       Card editor, rich content renderer, dialogs, stats charts, ui/ primitives
+  services/         Data access and domain logic (decks, cards, collections, quizzes, stats,
+                    media storage, import/export, SRS scheduler in srsAlgorithm.ts)
+  hooks/            Auth flows, plan limits, PWA install prompt, sounds
+  i18n/locales/     en.json and pt.json
+  types/database.ts Types generated from the Supabase schema (pnpm db:types)
+supabase/
+  migrations/       Schema, RLS policies, triggers and RPCs
+  functions/        Edge functions (suggestions, AI generation, billing)
+mcp-server/         MCP server for creating content from AI assistants
+docs/               Design notes and screenshots
 ```
 
-## 🧪 Importing from Anki
+## Roadmap
 
-Flash Learn understands the formats Anki exports:
+- [x] Collections and quizzes
+- [x] Per-deck spaced-repetition settings and daily new-card limits
+- [x] MCP server with browser login
+- [ ] Re-enable AI deck generation
+- [ ] Anki (`.apkg`) import
+- [ ] Deck ratings and comments
+- [ ] Swipe gestures in mobile study mode
 
-| Format | Extension | Notes |
-|--------|-----------|-------|
-| Anki package | `.apkg`, `.colpkg` | Includes images, audio, and HTML formatting |
-| Tab/comma/semicolon delimited | `.txt`, `.csv`, `.tsv` | Auto-detects delimiter |
+## Contributing
 
-Cloze notes (`{{c1::answer}}`) are converted into front/back pairs. Inline `[sound:foo.mp3]` markers and `<img src="...">` references are preserved and rewritten to use the app's `media://` scheme.
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, and report vulnerabilities privately as
+described in [SECURITY.md](SECURITY.md).
 
-## 🤝 Contributing
+## License
 
-Contributions, bug reports, and feature requests are welcome.
+[MIT](LICENSE)
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Run the linter and type-checker before pushing
-4. Open a pull request describing the change and the motivation
+## Acknowledgements
 
-For larger changes, please open an issue first to discuss the direction.
-
-## 🗺️ Roadmap
-
-- [ ] Cloud-synced media storage (Firebase Storage backend)
-- [ ] Cross-device sync of card media via Firestore references
-- [ ] Mobile-optimized study mode with swipe gestures
-- [ ] Public deck rating and comments
-- [ ] More import formats (Quizlet, Mochi, RemNote)
-
-## 📄 License
-
-Released under the [MIT License](LICENSE).
-
-## 🙏 Acknowledgements
-
-- [Anki](https://apps.ankiweb.net) — for pioneering the open flashcard format Flash Learn interoperates with
-- [TipTap](https://tiptap.dev) — headless, framework-agnostic rich-text editor
-- [shadcn/ui](https://ui.shadcn.com) — design patterns for Radix-based components
-- [sql.js](https://sql.js.org) — SQLite compiled to WebAssembly, used to read `.apkg` collections
-
----
-
-<div align="center">
-
-**Built with ❤️ for learners who want to remember, not just review.**
-
-</div>
+- [Anki](https://apps.ankiweb.net), for the scheduling ideas Flash Learn builds on
+- [TipTap](https://tiptap.dev), [Radix UI](https://www.radix-ui.com) and [shadcn/ui](https://ui.shadcn.com)
+- [Supabase](https://supabase.com), for auth, Postgres and storage
