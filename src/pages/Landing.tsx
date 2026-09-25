@@ -27,6 +27,10 @@ import { cn } from '../lib/utils';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
+// AI deck generation is paused (its buttons are hidden on the dashboard), so
+// the landing page must not advertise it either.
+const AI_DECKS_ENABLED = false;
+
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -272,7 +276,7 @@ const Landing: React.FC = () => {
   const capabilities = [
     { icon: Brain, value: t('landing.cap1Value'), label: t('landing.cap1Label') },
     { icon: WifiOff, value: t('landing.cap2Value'), label: t('landing.cap2Label') },
-    { icon: KeyRound, value: t('landing.cap3Value'), label: t('landing.cap3Label') },
+    { icon: Languages, value: t('landing.cap3Value'), label: t('landing.cap3Label') },
     { icon: BadgeCheck, value: t('landing.cap4Value'), label: t('landing.cap4Label') },
   ];
 
@@ -307,7 +311,7 @@ const Landing: React.FC = () => {
   const navLinks = [
     { href: '#features', label: t('landing.navFeatures') },
     { href: '#how', label: t('landing.navHow') },
-    { href: '#ai', label: t('landing.navAi') },
+    ...(AI_DECKS_ENABLED ? [{ href: '#ai', label: t('landing.navAi') }] : []),
     { href: '#use-cases', label: t('landing.navUseCases') },
   ];
 
@@ -500,44 +504,48 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* ── AI deck generation (honest) ──────────────────────── */}
-      <section id="ai" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <Reveal>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {t('landing.aiEyebrow')}
-            </p>
-            <h2 className="font-display mt-3 text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
-              {t('landing.aiTitle')}
-            </h2>
-            <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-              {t('landing.aiSubtitle')}
-            </p>
+      {AI_DECKS_ENABLED && (
+        <>
+          {/* ── AI deck generation (honest) ──────────────────────── */}
+          <section id="ai" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+            <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+              <Reveal>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  {t('landing.aiEyebrow')}
+                </p>
+                <h2 className="font-display mt-3 text-balance text-3xl font-extrabold tracking-tight sm:text-4xl">
+                  {t('landing.aiTitle')}
+                </h2>
+                <p className="mt-4 text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+                  {t('landing.aiSubtitle')}
+                </p>
 
-            <ul className="mt-8 space-y-5">
-              {aiPoints.map(({ icon: Icon, title, body }) => (
-                <li key={title} className="flex gap-4">
-                  <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                <ul className="mt-8 space-y-5">
+                  {aiPoints.map(({ icon: Icon, title, body }) => (
+                    <li key={title} className="flex gap-4">
+                      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
 
-            <p className="mt-7 rounded-xl border border-border/60 bg-card/50 px-4 py-3 text-sm text-muted-foreground">
-              {t('landing.aiNote')}
-            </p>
-          </Reveal>
+                <p className="mt-7 rounded-xl border border-border/60 bg-card/50 px-4 py-3 text-sm text-muted-foreground">
+                  {t('landing.aiNote')}
+                </p>
+              </Reveal>
 
-          <Reveal delay={120} className="flex justify-center lg:justify-end">
-            <AiMockup />
-          </Reveal>
-        </div>
-      </section>
+              <Reveal delay={120} className="flex justify-center lg:justify-end">
+                <AiMockup />
+              </Reveal>
+            </div>
+          </section>
+        </>
+      )}
 
       {/* ── Use cases (replaces fabricated testimonials) ─────── */}
       <section id="use-cases" className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
