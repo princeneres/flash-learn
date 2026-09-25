@@ -41,7 +41,7 @@ export const ReviewsOverTimeChart: React.FC<{ byDay: DayStat[] }> = ({ byDay }) 
       </CardHeader>
       <CardContent>
         <ChartContainer config={config} className="aspect-[16/6] w-full">
-          <BarChart data={data} margin={{ left: -20, right: 4, top: 4 }}>
+          <BarChart data={data} margin={{ left: 0, right: 4, top: 4 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
