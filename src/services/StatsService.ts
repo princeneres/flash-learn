@@ -57,28 +57,60 @@ export interface StatsSummary {
   dueTotal: number;
 }
 
+// PostgREST caps every response (max_rows, 1000 by default), so a single
+// select silently drops the newest rows for active learners. Read in pages.
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data as T[] | null) ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
+
 export const StatsService = {
   /**
-   * One bounded read of personal study history plus the future due queue.
+   * Personal study history for the last windowDays plus the future due queue,
+   * read in pages.
    * RLS scopes both selects to the signed-in user.
    */
   getRawStats: async (ownerId: string, windowDays = 365): Promise<RawStats> => {
     const since = subDays(startOfDay(new Date()), windowDays).toISOString();
 
-    const [logsRes, dueRes, profileRes] = await Promise.all([
-      supabase
-        .from('review_logs')
-        .select(
-          'id, owner_id, card_id, deck_id, deck_category, quality, was_correct, prev_status, reviewed_at',
-        )
-        .eq('owner_id', ownerId)
-        .gte('reviewed_at', since)
-        .order('reviewed_at', { ascending: true }),
-      supabase
-        .from('cards')
-        .select('next_review, status, decks(category)')
-        .eq('owner_id', ownerId)
-        .gte('next_review', new Date().toISOString()),
+    const nowIso = new Date().toISOString();
+
+    const [logRows, dueRows, profileRes] = await Promise.all([
+      fetchAllRows<DbReviewLog>((from, to) =>
+        supabase
+          .from('review_logs')
+          .select(
+            'id, owner_id, card_id, deck_id, deck_category, quality, was_correct, prev_status, reviewed_at',
+          )
+          .eq('owner_id', ownerId)
+          .gte('reviewed_at', since)
+          .order('reviewed_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, to),
+      ),
+      fetchAllRows<{
+        next_review: string;
+        status: string;
+        decks: { category: string | null } | { category: string | null }[] | null;
+      }>((from, to) =>
+        supabase
+          .from('cards')
+          .select('id, next_review, status, decks(category)')
+          .eq('owner_id', ownerId)
+          .gte('next_review', nowIso)
+          .order('id', { ascending: true })
+          .range(from, to),
+      ),
       supabase
         .from('profiles')
         .select('total_reviews, streak, points')
@@ -86,18 +118,9 @@ export const StatsService = {
         .maybeSingle(),
     ]);
 
-    if (logsRes.error) throw logsRes.error;
-    if (dueRes.error) throw dueRes.error;
+    const logs = logRows.map(fromDbReviewLog);
 
-    const logs = ((logsRes.data as DbReviewLog[] | null) ?? []).map(fromDbReviewLog);
-
-    const dueCards: DueCard[] = (
-      (dueRes.data as Array<{
-        next_review: string;
-        status: string;
-        decks: { category: string | null } | { category: string | null }[] | null;
-      }> | null) ?? []
-    ).map((row) => {
+    const dueCards: DueCard[] = dueRows.map((row) => {
       const deck = Array.isArray(row.decks) ? row.decks[0] : row.decks;
       return {
         nextReview: row.next_review,
