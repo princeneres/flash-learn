@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import { toast } from '../components/ui/use-toast';
 import i18n from '../i18n';
 
@@ -21,7 +21,7 @@ export const GamificationService = {
   // Awards points, advances the streak, and unlocks achievements for a review,
   // enforced server-side so scores can't be forged from the client.
   recordReview: async (cardId: string, quality: number): Promise<void> => {
-    const { data, error } = await supabase.rpc('record_review', {
+    const { data, error } = await neon.rpc('record_review', {
       p_card_id: cardId,
       p_quality: quality,
     });
@@ -37,7 +37,7 @@ export const GamificationService = {
   },
 
   getLeaderboard: async (): Promise<LeaderboardEntry[]> => {
-    const { data, error } = await supabase.rpc('get_leaderboard');
+    const { data, error } = await neon.rpc('get_leaderboard');
     if (error) throw error;
     return (
       (data as Array<{

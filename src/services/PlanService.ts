@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 
 export interface PlanLimits {
   plan: {
@@ -18,7 +18,7 @@ export interface PlanLimits {
 
 export const PlanService = {
   getLimits: async (): Promise<PlanLimits | null> => {
-    const { data, error } = await supabase.rpc('get_my_limits');
+    const { data, error } = await neon.rpc('get_my_limits');
     if (error) throw error;
     if (!data) return null;
     return data as PlanLimits;

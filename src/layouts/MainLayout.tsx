@@ -3,7 +3,7 @@ import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-do
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import {
   BarChart3,
   Globe,
@@ -49,7 +49,7 @@ const MainLayout: React.FC = () => {
   const isStudying = location.pathname.startsWith('/study/');
 
   const displayName =
-    (currentUser?.user_metadata?.full_name as string | undefined) ||
+    (currentUser?.user_metadata?.displayName as string | undefined) ||
     currentUser?.email?.split('@')[0] ||
     '';
 
@@ -71,7 +71,7 @@ const MainLayout: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await neon.auth.signOut();
       navigate('/login');
     } catch (error) {
       console.error('Failed to log out', error);

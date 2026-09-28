@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 
 export interface UserSettings {
   language?: string;
@@ -13,7 +13,7 @@ export const UserSettingsService = {
     currentUid = uid;
     const cached = cache.get(uid);
     if (cached) return cached;
-    const { data } = await supabase
+    const { data } = await neon
       .from('profiles')
       .select('language, sound_enabled')
       .eq('id', uid)

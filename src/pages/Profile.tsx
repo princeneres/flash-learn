@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import {
   User,
   Globe,
@@ -61,7 +61,7 @@ const Profile: React.FC = () => {
 
   const loadProfile = async () => {
     try {
-      const { data } = await supabase
+      const { data } = await neon
         .from('profiles')
         .select('*')
         .eq('id', currentUser!.id)
@@ -99,7 +99,7 @@ const Profile: React.FC = () => {
   const changeLanguage = async (lang: string) => {
     i18n.changeLanguage(lang);
     try {
-      await supabase.from('profiles').update({ language: lang }).eq('id', currentUser!.id);
+      await neon.from('profiles').update({ language: lang }).eq('id', currentUser!.id);
       toast({ title: t('profile.languageUpdated') });
     } catch (error) {
       console.error(error);
@@ -111,7 +111,7 @@ const Profile: React.FC = () => {
     if (!next || next === userData?.displayName) return;
     setSavingName(true);
     try {
-      const { error } = await supabase
+      const { error } = await neon
         .from('profiles')
         .update({ display_name: next })
         .eq('id', currentUser!.id);
@@ -133,7 +133,7 @@ const Profile: React.FC = () => {
     setUploadingAvatar(true);
     try {
       const url = await AvatarService.upload(currentUser.id, file);
-      const { error } = await supabase
+      const { error } = await neon
         .from('profiles')
         .update({ photo_url: url })
         .eq('id', currentUser.id);

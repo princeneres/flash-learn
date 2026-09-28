@@ -1,5 +1,5 @@
 import { addDays, format, parseISO, startOfDay, subDays } from 'date-fns';
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import { fromDbReviewLog, type DbReviewLog, type ReviewLog } from './_mappers';
 
 const DAY = 'yyyy-MM-dd';
@@ -87,7 +87,7 @@ export const StatsService = {
 
     const [logRows, dueRows, profileRes] = await Promise.all([
       fetchAllRows<DbReviewLog>((from, to) =>
-        supabase
+        neon
           .from('review_logs')
           .select(
             'id, owner_id, card_id, deck_id, deck_category, quality, was_correct, prev_status, reviewed_at',
@@ -103,7 +103,7 @@ export const StatsService = {
         status: string;
         decks: { category: string | null } | { category: string | null }[] | null;
       }>((from, to) =>
-        supabase
+        neon
           .from('cards')
           .select('id, next_review, status, decks(category)')
           .eq('owner_id', ownerId)
@@ -111,7 +111,7 @@ export const StatsService = {
           .order('id', { ascending: true })
           .range(from, to),
       ),
-      supabase
+      neon
         .from('profiles')
         .select('total_reviews, streak, points')
         .eq('id', ownerId)

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { callApi } from '../lib/api';
 import { downscaleImage } from '../lib/image';
 
 const BUCKET = 'avatars';
@@ -15,13 +15,19 @@ export const AvatarService = {
   upload: async (uid: string, file: File): Promise<string> => {
     const blob = await downscaleImage(file, { maxSize: 512, quality: 0.85 });
     const path = objectPath(uid);
-    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-      upsert: true,
-      contentType: blob.type || file.type || 'image/jpeg',
+    const contentType = blob.type || file.type || 'image/jpeg';
+    const { url, publicUrl } = await callApi<{ url: string; publicUrl: string }>('storage', {
+      action: 'upload-url',
+      bucket: BUCKET,
+      path,
+      contentType,
     });
-    if (error) throw error;
-
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return `${data.publicUrl}?t=${Date.now()}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: blob,
+    });
+    if (!res.ok) throw new Error(`Avatar upload failed (${res.status})`);
+    return `${publicUrl}?t=${Date.now()}`;
   },
 };

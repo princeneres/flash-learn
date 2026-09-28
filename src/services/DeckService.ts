@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import { MediaStorageService } from './MediaStorageService';
 import { collectCardMediaRefs } from '../lib/media';
 import { fromDbDeck, toDbDeck } from './_mappers';
@@ -26,7 +26,7 @@ const TABLE = 'decks';
 export const DeckService = {
   createDeck: async (ownerId: string, deck: Partial<Deck>): Promise<string> => {
     const payload = toDbDeck({ ...deck, ownerId });
-    const { data, error } = await supabase.from(TABLE).insert(payload).select('id').single();
+    const { data, error } = await neon.from(TABLE).insert(payload).select('id').single();
     if (error) {
       const plan = parsePlanError(error);
       throw plan ?? error;
@@ -35,7 +35,7 @@ export const DeckService = {
   },
 
   getUserDecks: async (ownerId: string): Promise<Deck[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from(TABLE)
       .select('*')
       .eq('owner_id', ownerId)
@@ -45,7 +45,7 @@ export const DeckService = {
   },
 
   getDeck: async (deckId: string): Promise<Deck | null> => {
-    const { data, error } = await supabase.from(TABLE).select('*').eq('id', deckId).maybeSingle();
+    const { data, error } = await neon.from(TABLE).select('*').eq('id', deckId).maybeSingle();
     if (error) throw error;
     return data ? fromDbDeck(data) : null;
   },
@@ -53,7 +53,7 @@ export const DeckService = {
   // Like getDeck, but resolves the owner's current display name (works for
   // public decks owned by other users, where profiles RLS blocks a direct read).
   getDeckDetail: async (deckId: string): Promise<Deck | null> => {
-    const { data, error } = await supabase.rpc('get_deck_detail', { p_deck_id: deckId });
+    const { data, error } = await neon.rpc('get_deck_detail', { p_deck_id: deckId });
     if (error) throw error;
     const row = Array.isArray(data) ? data[0] : data;
     return row ? fromDbDeck(row) : null;
@@ -66,12 +66,12 @@ export const DeckService = {
     if (patch.tags !== undefined) payload.tags = patch.tags;
     if (patch.isPublic !== undefined) payload.is_public = patch.isPublic;
     if (patch.srsSettings !== undefined) payload.srs_settings = patch.srsSettings;
-    const { error } = await supabase.from(TABLE).update(payload).eq('id', deckId);
+    const { error } = await neon.from(TABLE).update(payload).eq('id', deckId);
     if (error) throw error;
   },
 
   deleteDeck: async (deckId: string): Promise<void> => {
-    const { data: cardRows } = await supabase
+    const { data: cardRows } = await neon
       .from('cards')
       .select('front, back, front_audio, back_audio')
       .eq('deck_id', deckId);
@@ -90,7 +90,7 @@ export const DeckService = {
         console.error('Failed to delete deck media', err);
       }
     }
-    const { error } = await supabase.from(TABLE).delete().eq('id', deckId);
+    const { error } = await neon.from(TABLE).delete().eq('id', deckId);
     if (error) throw error;
   },
 
@@ -134,7 +134,7 @@ export const DeckService = {
   // Served through an RPC so each deck carries its owner's *current* profile
   // name (resolving it client-side is blocked by RLS on other users' profiles).
   getPublicDecks: async (): Promise<Deck[]> => {
-    const { data, error } = await supabase.rpc('get_public_decks');
+    const { data, error } = await neon.rpc('get_public_decks');
     if (error) throw error;
     return (data ?? []).map(fromDbDeck);
   },

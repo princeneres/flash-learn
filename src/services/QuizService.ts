@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import {
   fromDbQuiz,
   toDbQuiz,
@@ -62,13 +62,13 @@ const TABLE = 'quizzes';
 export const QuizService = {
   createQuiz: async (ownerId: string, quiz: Partial<Quiz>): Promise<string> => {
     const payload = toDbQuiz({ ...quiz, ownerId });
-    const { data, error } = await supabase.from(TABLE).insert(payload).select('id').single();
+    const { data, error } = await neon.from(TABLE).insert(payload).select('id').single();
     if (error) throw error;
     return data.id as string;
   },
 
   getCollectionQuizzes: async (collectionId: string): Promise<Quiz[]> => {
-    const { data, error } = await supabase.rpc('get_collection_quizzes', {
+    const { data, error } = await neon.rpc('get_collection_quizzes', {
       p_collection_id: collectionId,
     });
     if (error) throw error;
@@ -76,7 +76,7 @@ export const QuizService = {
   },
 
   getQuiz: async (quizId: string): Promise<Quiz | null> => {
-    const { data, error } = await supabase.from(TABLE).select('*').eq('id', quizId).maybeSingle();
+    const { data, error } = await neon.from(TABLE).select('*').eq('id', quizId).maybeSingle();
     if (error) throw error;
     return data ? fromDbQuiz(data) : null;
   },
@@ -87,19 +87,19 @@ export const QuizService = {
     if (patch.description !== undefined) payload.description = patch.description;
     if (patch.passThreshold !== undefined) payload.pass_threshold = patch.passThreshold ?? null;
     if (patch.orderIndex !== undefined) payload.order_index = patch.orderIndex;
-    const { error } = await supabase.from(TABLE).update(payload).eq('id', quizId);
+    const { error } = await neon.from(TABLE).update(payload).eq('id', quizId);
     if (error) throw error;
   },
 
   deleteQuiz: async (quizId: string): Promise<void> => {
-    const { error } = await supabase.from(TABLE).delete().eq('id', quizId);
+    const { error } = await neon.from(TABLE).delete().eq('id', quizId);
     if (error) throw error;
   },
 
   // --- Questions ----------------------------------------------------------
 
   getQuizQuestions: async (quizId: string): Promise<QuizQuestion[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from('quiz_questions')
       .select('*')
       .eq('quiz_id', quizId)
@@ -115,7 +115,7 @@ export const QuizService = {
     question: Partial<QuizQuestion>,
   ): Promise<string> => {
     const payload = toDbQuizQuestion({ ...question, ownerId, quizId });
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from('quiz_questions')
       .insert(payload)
       .select('id')
@@ -131,12 +131,12 @@ export const QuizService = {
     if (patch.options !== undefined) payload.options = patch.options;
     if (patch.explanation !== undefined) payload.explanation = patch.explanation ?? null;
     if (patch.orderIndex !== undefined) payload.order_index = patch.orderIndex;
-    const { error } = await supabase.from('quiz_questions').update(payload).eq('id', questionId);
+    const { error } = await neon.from('quiz_questions').update(payload).eq('id', questionId);
     if (error) throw error;
   },
 
   deleteQuestion: async (questionId: string): Promise<void> => {
-    const { error } = await supabase.from('quiz_questions').delete().eq('id', questionId);
+    const { error } = await neon.from('quiz_questions').delete().eq('id', questionId);
     if (error) throw error;
   },
 
@@ -146,7 +146,7 @@ export const QuizService = {
     ownerId: string,
     attempt: Omit<QuizAttempt, 'id' | 'ownerId' | 'completedAt'>,
   ): Promise<void> => {
-    const { error } = await supabase.from('quiz_attempts').insert({
+    const { error } = await neon.from('quiz_attempts').insert({
       owner_id: ownerId,
       quiz_id: attempt.quizId,
       collection_id: attempt.collectionId,
@@ -158,7 +158,7 @@ export const QuizService = {
   },
 
   getAttempts: async (quizId: string): Promise<QuizAttempt[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from('quiz_attempts')
       .select('*')
       .eq('quiz_id', quizId)

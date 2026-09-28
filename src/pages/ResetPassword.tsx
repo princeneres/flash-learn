@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LockKeyhole } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -7,31 +7,20 @@ import { Input } from '../components/ui/input';
 import { useResetPassword } from '../hooks/useResetPassword';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
-import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/use-toast';
 
 const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [ready, setReady] = useState(false);
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const { resetPassword, loading } = useResetPassword();
   const { toast } = useToast();
   const currentYear = new Date().getFullYear();
 
-  // The recovery link signs the user in with a temporary session
-  // (detectSessionInUrl). Confirm it exists before allowing a reset.
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setReady(!!data.session);
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        setReady(true);
-      }
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
+  // The reset link lands here with ?token=… (or ?error=INVALID_TOKEN when expired).
+  const token = searchParams.get('token');
+  const ready = !!token && !searchParams.get('error');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +28,7 @@ const ResetPassword: React.FC = () => {
       toast({ title: t('auth.passwordsDoNotMatch'), variant: 'destructive' });
       return;
     }
-    await resetPassword(password);
+    if (token) await resetPassword(password, token);
   };
 
   return (
@@ -70,7 +59,7 @@ const ResetPassword: React.FC = () => {
                     type="password"
                     autoComplete="new-password"
                     required
-                    minLength={6}
+                    minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -83,7 +72,7 @@ const ResetPassword: React.FC = () => {
                     type="password"
                     autoComplete="new-password"
                     required
-                    minLength={6}
+                    minLength={8}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />

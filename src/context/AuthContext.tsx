@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import type { AuthUser as User } from '../lib/neon';
+import { neon } from '../lib/neon';
 import { UserSettingsService } from '../services/UserSettingsService';
 
 interface AuthContextType {
@@ -23,7 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let cancelled = false;
 
     const bootstrap = async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await neon.auth.getSession();
       if (cancelled) return;
       const user = data.session?.user ?? null;
       setCurrentUser(user);
@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     bootstrap();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = neon.auth.onAuthStateChange((_event, session) => {
       const user = session?.user ?? null;
       setCurrentUser(user);
       if (user) {

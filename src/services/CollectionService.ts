@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import { fromDbCollection, toDbCollection, fromDbDeck } from './_mappers';
 import type { Deck } from './DeckService';
 
@@ -27,13 +27,13 @@ const TABLE = 'collections';
 export const CollectionService = {
   createCollection: async (ownerId: string, collection: Partial<Collection>): Promise<string> => {
     const payload = toDbCollection({ ...collection, ownerId });
-    const { data, error } = await supabase.from(TABLE).insert(payload).select('id').single();
+    const { data, error } = await neon.from(TABLE).insert(payload).select('id').single();
     if (error) throw error;
     return data.id as string;
   },
 
   getUserCollections: async (ownerId: string): Promise<Collection[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from(TABLE)
       .select('*')
       .eq('owner_id', ownerId)
@@ -43,7 +43,7 @@ export const CollectionService = {
   },
 
   getCollection: async (collectionId: string): Promise<Collection | null> => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from(TABLE)
       .select('*')
       .eq('id', collectionId)
@@ -55,7 +55,7 @@ export const CollectionService = {
   // Like getCollection, but resolves the owner's current display name (works for
   // public collections owned by other users, where profiles RLS blocks a read).
   getCollectionDetail: async (collectionId: string): Promise<Collection | null> => {
-    const { data, error } = await supabase.rpc('get_collection_detail', {
+    const { data, error } = await neon.rpc('get_collection_detail', {
       p_collection_id: collectionId,
     });
     if (error) throw error;
@@ -71,19 +71,19 @@ export const CollectionService = {
     if (patch.tags !== undefined) payload.tags = patch.tags;
     if (patch.isPublic !== undefined) payload.is_public = patch.isPublic;
     if (patch.coverColor !== undefined) payload.cover_color = patch.coverColor;
-    const { error } = await supabase.from(TABLE).update(payload).eq('id', collectionId);
+    const { error } = await neon.from(TABLE).update(payload).eq('id', collectionId);
     if (error) throw error;
   },
 
   deleteCollection: async (collectionId: string): Promise<void> => {
     // Cascades to deck_collections links and quizzes (FK on delete cascade);
     // member decks themselves are left untouched.
-    const { error } = await supabase.from(TABLE).delete().eq('id', collectionId);
+    const { error } = await neon.from(TABLE).delete().eq('id', collectionId);
     if (error) throw error;
   },
 
   getPublicCollections: async (): Promise<Collection[]> => {
-    const { data, error } = await supabase.rpc('get_public_collections');
+    const { data, error } = await neon.rpc('get_public_collections');
     if (error) throw error;
     return (data ?? []).map(fromDbCollection);
   },
@@ -91,7 +91,7 @@ export const CollectionService = {
   // --- Membership (M:N deck_collections) ---------------------------------
 
   getCollectionDecks: async (collectionId: string): Promise<CollectionDeck[]> => {
-    const { data, error } = await supabase.rpc('get_collection_decks', {
+    const { data, error } = await neon.rpc('get_collection_decks', {
       p_collection_id: collectionId,
     });
     if (error) throw error;
@@ -103,7 +103,7 @@ export const CollectionService = {
 
   /** Collection ids the given deck currently belongs to (for the deck editor). */
   getDeckCollectionIds: async (deckId: string): Promise<string[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from('deck_collections')
       .select('collection_id')
       .eq('deck_id', deckId);
@@ -117,7 +117,7 @@ export const CollectionService = {
     deckId: string,
     orderIndex = 0,
   ): Promise<void> => {
-    const { error } = await supabase.from('deck_collections').upsert(
+    const { error } = await neon.from('deck_collections').upsert(
       {
         owner_id: ownerId,
         collection_id: collectionId,
@@ -130,7 +130,7 @@ export const CollectionService = {
   },
 
   removeDeck: async (collectionId: string, deckId: string): Promise<void> => {
-    const { error } = await supabase
+    const { error } = await neon
       .from('deck_collections')
       .delete()
       .eq('collection_id', collectionId)
@@ -139,7 +139,7 @@ export const CollectionService = {
   },
 
   setDeckOrder: async (collectionId: string, deckId: string, orderIndex: number): Promise<void> => {
-    const { error } = await supabase
+    const { error } = await neon
       .from('deck_collections')
       .update({ order_index: orderIndex })
       .eq('collection_id', collectionId)

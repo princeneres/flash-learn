@@ -1,6 +1,41 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Serves api/<name>.ts (Vercel Functions with Web `POST(Request)` handlers) under
+// `pnpm dev`, so the app works locally without `vercel dev`. Production uses Vercel.
+const apiFunctions = (): Plugin => ({
+  name: 'api-functions',
+  apply: 'serve',
+  configureServer(server) {
+    Object.assign(process.env, loadEnv(server.config.mode, process.cwd(), ''));
+    server.middlewares.use(async (req, res, next) => {
+      const match = req.url?.match(/^\/api\/([\w-]+)(\?.*)?$/);
+      if (!match) return next();
+      try {
+        const mod = await server.ssrLoadModule(`/api/${match[1]}.ts`);
+        const handler = mod[req.method ?? 'GET'];
+        if (typeof handler !== 'function') {
+          res.statusCode = 405;
+          return res.end();
+        }
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(chunk as Buffer);
+        const request = new Request(`http://${req.headers.host}${req.url}`, {
+          method: req.method,
+          headers: req.headers as Record<string, string>,
+          body: chunks.length ? Buffer.concat(chunks) : undefined,
+        });
+        const response: Response = await handler(request);
+        res.statusCode = response.status;
+        response.headers.forEach((value, key) => res.setHeader(key, value));
+        res.end(Buffer.from(await response.arrayBuffer()));
+      } catch (err) {
+        next(err);
+      }
+    });
+  },
+});
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,6 +48,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   plugins: [
+    apiFunctions(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -62,13 +98,15 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/__/, /\/[^/?]+\.[^/]+$/],
+        navigateFallbackDenylist: [/^\/__/, /^\/api\//, /\/[^/?]+\.[^/]+$/],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
+            // Neon Data API (PostgREST) reads.
+            urlPattern: ({ url }) =>
+              url.hostname.endsWith('.neon.tech') && url.hostname.includes('.apirest.'),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'supabase-api',
+              cacheName: 'neon-data-api',
               networkTimeoutSeconds: 5,
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
               cacheableResponse: { statuses: [0, 200] },
@@ -93,11 +131,12 @@ export default defineConfig({
             },
           },
           {
+            // Neon object storage (presigned media URLs, public avatars).
             urlPattern: ({ url }) =>
-              url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/'),
+              url.hostname.endsWith('.neon.tech') && url.hostname.includes('.storage.'),
             handler: 'CacheFirst',
             options: {
-              cacheName: 'supabase-storage',
+              cacheName: 'neon-storage',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },

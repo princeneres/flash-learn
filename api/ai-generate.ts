@@ -1,30 +1,16 @@
-// Edge Function: ai-generate
-//
 // The single server-side path for AI deck generation. Validates the caller's
 // JWT, spends one AI credit atomically, then calls OpenAI with OUR secret key.
 // If OpenAI fails after the debit, the credit is refunded so a user never loses
 // a credit to our error.
 //
-// Required secrets (set with `supabase secrets set ...`):
+// Env:
 //   OPENAI_API_KEY  - our OpenAI API key (never exposed to the browser)
-// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically.
+//   OPENAI_MODEL    - optional model override
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-  });
+import { getUser, json, pgErrorMessage, readJson, sql } from './_lib/server.js';
 
 const OPENAI_BASE = 'https://api.openai.com/v1';
-const OPENAI_MODEL = Deno.env.get('OPENAI_MODEL') ?? 'gpt-4o-mini';
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 const MAX_CARDS_PER_GENERATION = 50;
 
 type Difficulty = 'beginner' | 'intermediate' | 'advanced';
@@ -87,7 +73,7 @@ const coerceCards = (input: unknown): GeneratedCard[] => {
 };
 
 const callOpenAi = async (prompt: string, maxTokens: number): Promise<unknown> => {
-  const apiKey = Deno.env.get('OPENAI_API_KEY');
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('NOT_CONFIGURED');
 
   const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
@@ -130,28 +116,12 @@ const callOpenAi = async (prompt: string, maxTokens: number): Promise<unknown> =
   }
 };
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+export async function POST(req: Request) {
+  const user = await getUser(req);
+  if (!user) return json({ error: 'Unauthorized' }, 401);
 
-  const authHeader = req.headers.get('Authorization') ?? '';
-  if (!authHeader.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const admin = createClient(supabaseUrl, serviceKey);
-
-  const token = authHeader.replace('Bearer ', '');
-  const { data: userData, error: userErr } = await admin.auth.getUser(token);
-  if (userErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);
-  const user = userData.user;
-
-  let body: Partial<GenerateOptions>;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: 'Invalid JSON' }, 400);
-  }
+  const body = await readJson<Partial<GenerateOptions>>(req);
+  if (!body) return json({ error: 'Invalid JSON' }, 400);
 
   const theme = (body.theme ?? '').trim();
   if (!theme) return json({ code: 'BAD_RESPONSE', error: 'Theme is required' }, 400);
@@ -164,12 +134,13 @@ Deno.serve(async (req) => {
     : 'intermediate';
 
   // Spend one credit up front. If the user has none, stop before touching OpenAI.
-  const { error: debitErr } = await admin.rpc('debit_ai_credit', { p_user: user.id });
-  if (debitErr) {
-    if ((debitErr.message ?? '').includes('INSUFFICIENT_CREDITS')) {
+  try {
+    await sql`select public.debit_ai_credit(${user.id})`;
+  } catch (err) {
+    if (pgErrorMessage(err).includes('INSUFFICIENT_CREDITS')) {
       return json({ code: 'NO_CREDITS', error: 'No AI credits' }, 402);
     }
-    console.error('debit failed', debitErr);
+    console.error('debit failed', err);
     return json({ code: 'UNKNOWN', error: 'Could not reserve credit' }, 500);
   }
 
@@ -192,14 +163,12 @@ Deno.serve(async (req) => {
   } catch (err) {
     // Generation failed after we debited — refund the credit.
     const code = err instanceof Error ? err.message : 'UNKNOWN';
-    const { error: refundErr } = await admin.rpc('credit_ai', {
-      p_user: user.id,
-      p_amount: 1,
-      p_reason: 'refund',
-      p_abacate_id: null,
-    });
-    if (refundErr) console.error('refund failed', refundErr);
+    try {
+      await sql`select public.credit_ai(${user.id}, 1, 'refund', null)`;
+    } catch (refundErr) {
+      console.error('refund failed', refundErr);
+    }
     console.error('generation failed', code);
     return json({ code, error: 'Generation failed' }, 502);
   }
-});
+}

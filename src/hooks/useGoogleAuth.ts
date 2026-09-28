@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
+import { neon } from "../lib/neon";
 import { useToast } from "../components/ui/use-toast";
 import { useTranslation } from "react-i18next";
 
@@ -11,7 +11,7 @@ export const useGoogleAuth = () => {
     const loginWithGoogle = async () => {
         setLoading(true);
         try {
-            const { error } = await supabase.auth.signInWithOAuth({
+            const { error } = await neon.auth.signInWithOAuth({
                 provider: "google",
                 options: {
                     redirectTo: `${window.location.origin}/dashboard`,

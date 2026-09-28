@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import { useAuth } from '../context/AuthContext';
 import { LoadingState } from '../components/LoadingState';
 import { Button } from '../components/ui/button';
@@ -66,7 +66,7 @@ const ConnectMcp: React.FC = () => {
     }
 
     (async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await neon.auth.getSession();
       const session = data.session;
       if (!session?.access_token) {
         fail('Não foi possível ler sua sessão. Faça login novamente.');

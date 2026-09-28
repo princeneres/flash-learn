@@ -1,7 +1,5 @@
-// Edge Function: abacate-webhook
-//
-// Receives AbacatePay webhooks (configured with verify_jwt = false — AbacatePay
-// does not send a Supabase JWT). Security is layered:
+// Receives AbacatePay webhooks (no user JWT — AbacatePay calls it directly).
+// Security is layered:
 //   1. ?webhookSecret= query param must match the configured secret (primary gate)
 //   2. x-webhook-timestamp must be within 5 minutes (anti-replay)
 //   3. x-webhook-signature HMAC-SHA256 — verified ONLY if ABACATEPAY_SIGNING_KEY is set
@@ -10,15 +8,11 @@
 // On `billing.paid` we credit the buyer idempotently (credit_ai is a no-op if the
 // payment id was already recorded) and mark the order paid.
 //
-// Required secrets:
+// Env:
 //   ABACATEPAY_WEBHOOK_SECRET - shared secret from the AbacatePay dashboard
 //   ABACATEPAY_SIGNING_KEY     - (optional) AbacatePay signing key to enable HMAC check
-// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+import { json, sql } from './_lib/server.js';
 
 const constantTimeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
   if (a.length !== b.length) return false;
@@ -50,10 +44,8 @@ const hmacSha256 = async (secret: string, message: string): Promise<Uint8Array> 
   return new Uint8Array(sig);
 };
 
-Deno.serve(async (req) => {
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-
-  const secret = Deno.env.get('ABACATEPAY_WEBHOOK_SECRET');
+export async function POST(req: Request) {
+  const secret = process.env.ABACATEPAY_WEBHOOK_SECRET;
   if (!secret) {
     console.error('ABACATEPAY_WEBHOOK_SECRET not set');
     return json({ error: 'Not configured' }, 500);
@@ -77,7 +69,7 @@ Deno.serve(async (req) => {
   // (NOT our webhookSecret), so validating against the wrong key would reject legitimate
   // events. Enable it only once the correct signing key is configured via
   // ABACATEPAY_SIGNING_KEY; until then the ?webhookSecret= query param is the auth gate.
-  const signingKey = Deno.env.get('ABACATEPAY_SIGNING_KEY');
+  const signingKey = process.env.ABACATEPAY_SIGNING_KEY;
   const signature = req.headers.get('x-webhook-signature');
   if (signingKey && signature) {
     const expected = await hmacSha256(signingKey, rawBody);
@@ -115,11 +107,6 @@ Deno.serve(async (req) => {
     return json({ error: 'Invalid JSON' }, 400);
   }
 
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  );
-
   // One-off credit purchases. v2 may name this checkout.completed; older flows used
   // billing.paid — accept both so the credits flow can't silently miss the event.
   if (event.event === 'billing.paid' || event.event === 'checkout.completed') {
@@ -140,19 +127,15 @@ Deno.serve(async (req) => {
       return json({ error: 'Missing metadata' }, 400);
     }
 
-    const { error: creditErr } = await admin.rpc('credit_ai', {
-      p_user: userId,
-      p_amount: credits,
-      p_reason: 'purchase',
-      p_abacate_id: `billing:${paymentId}`,
-    });
-    if (creditErr) {
-      console.error('credit failed', creditErr);
+    try {
+      await sql`select public.credit_ai(${userId}, ${credits}, 'purchase', ${`billing:${paymentId}`})`;
+    } catch (err) {
+      console.error('credit failed', err);
       return json({ error: 'Credit failed' }, 500); // 500 → AbacatePay retries.
     }
 
     if (orderId) {
-      await admin.from('ai_credit_orders').update({ status: 'paid' }).eq('id', orderId);
+      await sql`update public.ai_credit_orders set status = 'paid' where id = ${orderId}`;
     }
     return json({ received: true });
   }
@@ -183,28 +166,26 @@ Deno.serve(async (req) => {
       console.warn('subscription event without period end', event.event, subscriptionId);
     }
 
-    const { error: subErr } = await admin.rpc('apply_subscription', {
-      p_user: userId,
-      p_plan: planId,
-      p_status: 'active',
-      p_period_end: periodEnd,
-      p_abacate_id: subscriptionId,
-    });
-    if (subErr) {
-      console.error('apply_subscription failed', subErr);
+    try {
+      await sql`
+        select public.apply_subscription(${userId}, ${planId}, 'active', ${periodEnd}, ${subscriptionId})
+      `;
+    } catch (err) {
+      console.error('apply_subscription failed', err);
       return json({ error: 'Subscription apply failed' }, 500);
     }
 
     if (grantCredits > 0) {
       // Idempotent per (subscription, period): renewals grant fresh credits, retries don't.
-      const { error: creditErr } = await admin.rpc('credit_ai', {
-        p_user: userId,
-        p_amount: grantCredits,
-        p_reason: 'subscription',
-        p_abacate_id: `sub:${subscriptionId}:${periodEnd ?? event.id}`,
-      });
-      if (creditErr) {
-        console.error('subscription credit failed', creditErr);
+      try {
+        await sql`
+          select public.credit_ai(
+            ${userId}, ${grantCredits}, 'subscription',
+            ${`sub:${subscriptionId}:${periodEnd ?? event.id}`}
+          )
+        `;
+      } catch (err) {
+        console.error('subscription credit failed', err);
         return json({ error: 'Credit failed' }, 500);
       }
     }
@@ -219,9 +200,10 @@ Deno.serve(async (req) => {
       event.data?.subscription?.externalId ||
       event.data?.externalId;
     if (userId) {
-      const { error } = await admin.rpc('cancel_subscription', { p_user: userId });
-      if (error) {
-        console.error('cancel_subscription failed', error);
+      try {
+        await sql`select public.cancel_subscription(${userId})`;
+      } catch (err) {
+        console.error('cancel_subscription failed', err);
         return json({ error: 'Cancel failed' }, 500);
       }
     }
@@ -230,4 +212,4 @@ Deno.serve(async (req) => {
 
   // Acknowledge other events so AbacatePay doesn't retry them.
   return json({ received: true });
-});
+}

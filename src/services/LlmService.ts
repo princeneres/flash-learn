@@ -4,7 +4,7 @@
 // one AI credit, calls OpenAI with our key, and returns the cards. No API key is
 // ever stored in or sent from the browser.
 
-import { supabase } from '../lib/supabase';
+import { ApiError, callApi } from '../lib/api';
 
 export interface GeneratedCard {
   front: string;
@@ -64,33 +64,22 @@ const isCode = (v: unknown): v is LlmErrorCode =>
 
 export const LlmService = {
   generateCards: async (opts: GenerateOptions): Promise<GeneratedCard[]> => {
-    const { data, error } = await supabase.functions.invoke('ai-generate', {
-      body: {
+    let data: { cards?: GeneratedCard[] } | null;
+    try {
+      data = await callApi<{ cards?: GeneratedCard[] }>('ai-generate', {
         theme: opts.theme,
         count: opts.count,
         language: opts.language,
         difficulty: opts.difficulty,
         instructions: opts.instructions,
-      },
-    });
-
-    if (error) {
-      // The edge function returns a JSON body with a `code` even on non-2xx;
-      // supabase-js exposes it via the FunctionsHttpError context.
-      let code: LlmErrorCode = 'UNKNOWN';
-      try {
-        const ctx = (error as { context?: Response }).context;
-        if (ctx && typeof ctx.json === 'function') {
-          const parsed = await ctx.json();
-          if (isCode(parsed?.code)) code = parsed.code;
-        }
-      } catch {
-        code = 'NETWORK';
-      }
-      throw new LlmError(code);
+      });
+    } catch (error) {
+      // The server function returns a JSON body with a `code` even on non-2xx.
+      const code = error instanceof ApiError ? error.body?.code : 'NETWORK';
+      throw new LlmError(isCode(code) ? code : 'UNKNOWN');
     }
 
-    const cards = (data as { cards?: GeneratedCard[] } | null)?.cards;
+    const cards = data?.cards;
     if (!Array.isArray(cards) || cards.length === 0) throw new LlmError('EMPTY');
     return cards;
   },

@@ -1,5 +1,5 @@
 import { startOfDay } from 'date-fns';
-import { supabase } from '../lib/supabase';
+import { neon } from '../lib/neon';
 import { calculateReview, type SrsSettings } from './srsAlgorithm';
 import { GamificationService } from './GamificationService';
 import { MediaStorageService } from './MediaStorageService';
@@ -45,7 +45,7 @@ const rethrow = (err: unknown): never => {
 
 export const CardService = {
   createCard: async (ownerId: string, deckId: string, card: Partial<Card>): Promise<string> => {
-    const { data, error } = await supabase
+    const { data, error } = await neon
       .from(TABLE)
       .insert({
         deck_id: deckId,
@@ -77,7 +77,7 @@ export const CardService = {
         back_audio: c.backAudio ?? null,
         tags: c.tags ?? [],
       }));
-      const { error } = await supabase.from(TABLE).insert(rows);
+      const { error } = await neon.from(TABLE).insert(rows);
       if (error) rethrow(error);
       inserted += slice.length;
     }
@@ -85,7 +85,7 @@ export const CardService = {
   },
 
   getDeckCards: async (deckId: string): Promise<Card[]> => {
-    const { data, error } = await supabase.from(TABLE).select('*').eq('deck_id', deckId);
+    const { data, error } = await neon.from(TABLE).select('*').eq('deck_id', deckId);
     if (error) throw error;
     return (data ?? []).map(fromDbCard);
   },
@@ -96,12 +96,12 @@ export const CardService = {
     if (patch.back !== undefined) payload.back = patch.back;
     if (patch.frontAudio !== undefined) payload.front_audio = patch.frontAudio ?? null;
     if (patch.backAudio !== undefined) payload.back_audio = patch.backAudio ?? null;
-    const { error } = await supabase.from(TABLE).update(payload).eq('id', cardId);
+    const { error } = await neon.from(TABLE).update(payload).eq('id', cardId);
     if (error) throw error;
   },
 
   deleteCard: async (_deckId: string, cardId: string): Promise<void> => {
-    const { data } = await supabase
+    const { data } = await neon
       .from(TABLE)
       .select('front, back, front_audio, back_audio')
       .eq('id', cardId)
@@ -121,7 +121,7 @@ export const CardService = {
         }
       }
     }
-    const { error } = await supabase.from(TABLE).delete().eq('id', cardId);
+    const { error } = await neon.from(TABLE).delete().eq('id', cardId);
     if (error) throw error;
   },
 
@@ -130,7 +130,7 @@ export const CardService = {
   // tally survives reloads and several sessions across the same day.
   countNewStudiedToday: async (deckId: string): Promise<number> => {
     const since = startOfDay(new Date()).toISOString();
-    const { count, error } = await supabase
+    const { count, error } = await neon
       .from('review_logs')
       .select('*', { count: 'exact', head: true })
       .eq('deck_id', deckId)
@@ -151,7 +151,7 @@ export const CardService = {
   getDueCards: async (deckId: string, newLimit: number = Infinity): Promise<Card[]> => {
     const nowIso = new Date().toISOString();
 
-    const { data: reviewRows, error: reviewError } = await supabase
+    const { data: reviewRows, error: reviewError } = await neon
       .from(TABLE)
       .select('*')
       .eq('deck_id', deckId)
@@ -169,7 +169,7 @@ export const CardService = {
     const remainingNew = newLimit - studiedNew;
     if (remainingNew <= 0) return reviewCards;
 
-    let newQuery = supabase
+    let newQuery = neon
       .from(TABLE)
       .select('*')
       .eq('deck_id', deckId)
@@ -201,7 +201,7 @@ export const CardService = {
     // Captured before the update so the stats "new vs review" split is accurate.
     const prevStatus = card.status;
 
-    const { error } = await supabase
+    const { error } = await neon
       .from(TABLE)
       .update({
         next_review: result.nextReview.toISOString(),
@@ -218,7 +218,7 @@ export const CardService = {
     // Personal study history for the Stats page. Fire-and-forget: a logging
     // failure must never break the study session (mirrors recordReview).
     try {
-      const { error: logError } = await supabase.from('review_logs').insert({
+      const { error: logError } = await neon.from('review_logs').insert({
         owner_id: card.ownerId,
         card_id: card.id,
         deck_id: card.deckId,

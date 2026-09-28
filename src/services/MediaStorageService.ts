@@ -1,10 +1,9 @@
-import { supabase } from '../lib/supabase';
+import { callApi } from '../lib/api';
 import { UserSettingsService } from './UserSettingsService';
 
 export type MediaKind = 'audio' | 'image';
 
 const BUCKET = 'media';
-const SIGNED_URL_TTL_SEC = 60 * 60 * 24 * 7; // 7 days
 const SIGNED_URL_REFRESH_THRESHOLD_MS = 60 * 60 * 24 * 1000; // refresh if < 24h left
 
 // ============================================================
@@ -77,11 +76,24 @@ const urlCacheDelete = async (key: string): Promise<void> => {
 };
 
 // ============================================================
-// Supabase Storage helpers
+// Object storage helpers (presigned URLs from /api/storage)
 // ============================================================
 
 const storagePath = (uid: string, kind: MediaKind, ref: string): string =>
   `${uid}/${kind}/${ref}`;
+
+const signedDownloadUrl = async (
+  path: string
+): Promise<{ url: string; expiresIn: number } | null> => {
+  try {
+    return await callApi('storage', { action: 'download-url', bucket: BUCKET, path });
+  } catch {
+    return null;
+  }
+};
+
+const removePaths = (paths: string[]) =>
+  callApi('storage', { action: 'delete', bucket: BUCKET, paths });
 
 const memUrlCache = new Map<string, string>();
 const memBlobCache = new Map<string, Blob>();
@@ -95,13 +107,19 @@ export const MediaStorageService = {
   put: async (kind: MediaKind, ref: string, blob: Blob): Promise<void> => {
     const uid = UserSettingsService.getCurrentUid();
     if (!uid) throw new Error('Not authenticated');
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(storagePath(uid, kind, ref), blob, {
-        upsert: true,
-        contentType: blob.type || undefined,
-      });
-    if (error) throw error;
+    const contentType = blob.type || 'application/octet-stream';
+    const { url } = await callApi<{ url: string }>('storage', {
+      action: 'upload-url',
+      bucket: BUCKET,
+      path: storagePath(uid, kind, ref),
+      contentType,
+    });
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: blob,
+    });
+    if (!res.ok) throw new Error(`Media upload failed (${res.status})`);
     memBlobCache.set(cacheKey(uid, kind, ref), blob);
     memUrlCache.delete(cacheKey(uid, kind, ref));
     await urlCacheDelete(urlKey(uid, kind, ref));
@@ -127,13 +145,11 @@ export const MediaStorageService = {
       return persisted.url;
     }
 
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(storagePath(uid, kind, ref), SIGNED_URL_TTL_SEC);
-    if (error || !data) return null;
+    const signed = await signedDownloadUrl(storagePath(uid, kind, ref));
+    if (!signed) return null;
     const entry: CachedUrl = {
-      url: data.signedUrl,
-      expiresAt: Date.now() + SIGNED_URL_TTL_SEC * 1000,
+      url: signed.url,
+      expiresAt: Date.now() + signed.expiresIn * 1000,
     };
     memUrlCache.set(k, entry.url);
     await urlCachePut(urlKey(uid, kind, ref), entry);
@@ -149,10 +165,11 @@ export const MediaStorageService = {
     if (!uid) return null;
     const cached = memBlobCache.get(cacheKey(uid, kind, ref));
     if (cached) return cached;
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .download(storagePath(uid, kind, ref));
-    if (error || !data) return null;
+    const signed = await signedDownloadUrl(storagePath(uid, kind, ref));
+    if (!signed) return null;
+    const res = await fetch(signed.url);
+    if (!res.ok) return null;
+    const data = await res.blob();
     memBlobCache.set(cacheKey(uid, kind, ref), data);
     return data;
   },
@@ -163,7 +180,7 @@ export const MediaStorageService = {
   delete: async (kind: MediaKind, ref: string): Promise<void> => {
     const uid = UserSettingsService.getCurrentUid();
     if (!uid) return;
-    await supabase.storage.from(BUCKET).remove([storagePath(uid, kind, ref)]);
+    await removePaths([storagePath(uid, kind, ref)]);
     memUrlCache.delete(cacheKey(uid, kind, ref));
     memBlobCache.delete(cacheKey(uid, kind, ref));
     await urlCacheDelete(urlKey(uid, kind, ref));
@@ -174,7 +191,7 @@ export const MediaStorageService = {
     const uid = UserSettingsService.getCurrentUid();
     if (!uid) return;
     const paths = items.map((i) => storagePath(uid, i.kind, i.ref));
-    await supabase.storage.from(BUCKET).remove(paths);
+    await removePaths(paths);
     for (const { kind, ref } of items) {
       memUrlCache.delete(cacheKey(uid, kind, ref));
       memBlobCache.delete(cacheKey(uid, kind, ref));

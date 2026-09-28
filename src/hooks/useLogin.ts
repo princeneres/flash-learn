@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { neon } from "../lib/neon";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../components/ui/use-toast";
 
@@ -13,18 +13,18 @@ export const useLogin = () => {
     const login = async (email: string, password: string) => {
         setLoading(true);
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { error } = await neon.auth.signInWithPassword({
                 email,
                 password,
             });
             if (error) throw error;
             toast({ title: t("auth.welcomeBack") });
             navigate("/dashboard");
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
             toast({
                 title: t("auth.loginFailed"),
-                description: error?.message,
+                description: error instanceof Error ? error.message : undefined,
                 variant: "destructive",
             });
         } finally {

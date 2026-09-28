@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { neon } from "../lib/neon";
 import { useTranslation } from "react-i18next";
 import { useToast } from "../components/ui/use-toast";
 
@@ -13,29 +13,29 @@ export const useSignup = () => {
     const signup = async (name: string, email: string, password: string) => {
         setLoading(true);
         try {
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await neon.auth.signUp({
                 email,
                 password,
                 options: {
-                    data: { full_name: name },
+                    data: { displayName: name },
                 },
             });
             if (error) throw error;
             // Ensure profile row reflects the chosen display name + language.
             const user = data.user;
             if (user) {
-                await supabase
+                await neon
                     .from("profiles")
                     .update({ display_name: name, language: i18n.language })
                     .eq("id", user.id);
             }
             toast({ title: t("auth.accountCreated") });
             navigate("/dashboard");
-        } catch (error: any) {
+        } catch (error) {
             console.error(error);
             toast({
                 title: t("auth.signupFailed"),
-                description: error?.message,
+                description: error instanceof Error ? error.message : undefined,
                 variant: "destructive",
             });
         } finally {
