@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { neon } from '../lib/neon';
+import { callApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { LoadingState } from '../components/LoadingState';
 import { Button } from '../components/ui/button';
@@ -12,7 +12,7 @@ type Status = 'connecting' | 'success' | 'error' | 'needs-login';
  *
  * The local `flash-learn-mcp login` server opens this page with `?callback=` (a
  * localhost URL) and `?state=` (a nonce). The user is already authenticated in
- * the app, so we read the existing Supabase session and POST its tokens to the
+ * the app, so we issue a personal MCP token (api/mcp-token) and POST it to the
  * local callback. No token ever has to be copied by hand.
  *
  * We only ever POST to a localhost/127.0.0.1 callback — never an external host.
@@ -66,21 +66,21 @@ const ConnectMcp: React.FC = () => {
     }
 
     (async () => {
-      const { data } = await neon.auth.getSession();
-      const session = data.session;
-      if (!session?.access_token) {
-        fail('Não foi possível ler sua sessão. Faça login novamente.');
+      let token: string;
+      try {
+        ({ token } = await callApi<{ token: string }>('mcp-token', { name: 'Claude (MCP)' }));
+      } catch (err) {
+        fail(
+          'Não foi possível gerar o acesso do MCP. Faça login novamente. ' +
+            `(${err instanceof Error ? err.message : String(err)})`,
+        );
         return;
       }
       try {
         const res = await fetch(callbackUrl.toString(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            state,
-            access_token: session.access_token,
-            refresh_token: session.refresh_token ?? '',
-          }),
+          body: JSON.stringify({ state, token }),
         });
         if (!res.ok) throw new Error(`callback respondeu ${res.status}`);
         setStatus('success');

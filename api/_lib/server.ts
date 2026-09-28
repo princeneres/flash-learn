@@ -4,6 +4,7 @@
 //   DATABASE_URL        - Neon connection string (owner role; bypasses RLS)
 //   NEON_AUTH_JWKS_URL  - Neon Auth JWKS, used to verify the caller's session JWT
 
+import { createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
@@ -57,3 +58,6 @@ export async function readJson<T>(req: Request): Promise<T | null> {
 /** Postgres error raised by our functions with `raise exception '<CODE>'`. */
 export const pgErrorMessage = (err: unknown): string =>
   err instanceof Error ? err.message : String(err);
+
+/** MCP personal tokens are stored as SHA-256 hashes (public.mcp_tokens). */
+export const hashMcpToken = (token: string) => createHash('sha256').update(token).digest('hex');

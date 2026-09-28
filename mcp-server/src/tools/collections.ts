@@ -1,6 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { getUserClient } from '../supabase.js';
-import { rethrowFriendly } from '../planErrors.js';
+import { callTool } from '../client.js';
 import {
   addDeckToCollectionSchema,
   createCollectionSchema,
@@ -13,43 +12,19 @@ export function registerCollectionTools(server: McpServer): void {
     'Cria uma nova collection (agrupador de decks e quizzes) para o usuário autenticado.',
     createCollectionSchema,
     async (args) => {
-      const { client, userId } = await getUserClient();
-      const { data, error } = await client
-        .from('collections')
-        .insert({
-          owner_id: userId,
-          title: args.title,
-          description: args.description ?? null,
-          category: args.category ?? null,
-          tags: args.tags ?? [],
-          is_public: args.isPublic ?? false,
-          cover_color: args.coverColor ?? null,
-        })
-        .select('id')
-        .single();
-      if (error) rethrowFriendly(error);
+      const { id } = await callTool<{ id: string }>('create_collection', args);
       return {
-        content: [{ type: 'text', text: `Collection criada: "${args.title}" (id ${data!.id}).` }],
+        content: [{ type: 'text', text: `Collection criada: "${args.title}" (id ${id}).` }],
       };
     },
   );
 
   server.tool(
     'add_deck_to_collection',
-    'Adiciona um deck a uma collection. Ambos devem pertencer a você (validado por RLS).',
+    'Adiciona um deck a uma collection. Ambos devem pertencer a você.',
     addDeckToCollectionSchema,
     async (args) => {
-      const { client, userId } = await getUserClient();
-      const { error } = await client.from('deck_collections').upsert(
-        {
-          collection_id: args.collectionId,
-          deck_id: args.deckId,
-          owner_id: userId,
-          order_index: args.orderIndex ?? 0,
-        },
-        { onConflict: 'collection_id,deck_id' },
-      );
-      if (error) rethrowFriendly(error);
+      await callTool('add_deck_to_collection', args);
       return {
         content: [
           {
@@ -63,16 +38,10 @@ export function registerCollectionTools(server: McpServer): void {
 
   server.tool(
     'list_collections',
-    'Lista as collections do usuário (e públicas visíveis), com id, título e contagem de decks.',
+    'Lista as collections do usuário, com id, título e contagem de decks.',
     listCollectionsSchema,
     async (args) => {
-      const { client } = await getUserClient();
-      const { data, error } = await client
-        .from('collections')
-        .select('id, title, description, is_public, deck_count, created_at')
-        .order('created_at', { ascending: false })
-        .limit(args.limit ?? 50);
-      if (error) rethrowFriendly(error);
+      const data = await callTool<unknown[]>('list_collections', args);
       return { content: [{ type: 'text', text: JSON.stringify(data ?? [], null, 2) }] };
     },
   );

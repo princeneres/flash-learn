@@ -2,7 +2,8 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { AddressInfo } from 'node:net';
-import { saveSession, SESSION_FILE } from './session.js';
+import { saveToken, SESSION_FILE } from './session.js';
+import { APP_URL } from './client.js';
 
 /**
  * Browser login flow — no token copy-pasting.
@@ -10,17 +11,12 @@ import { saveSession, SESSION_FILE } from './session.js';
  *   1. Start an ephemeral localhost HTTP server.
  *   2. Open the app's /connect-mcp page (the user is/logs in there normally,
  *      including Google OAuth).
- *   3. That page posts the user's existing session tokens back to localhost.
- *   4. We save them to ~/.flash-learn-mcp/session.json and exit.
+ *   3. That page issues a personal MCP token and posts it back to localhost.
+ *   4. We save it to ~/.flash-learn-mcp/session.json and exit.
  *
  * A one-time `state` nonce guards the callback so a random local process can't
  * inject tokens.
  */
-
-const APP_URL = (process.env.FLASH_LEARN_APP_URL ?? 'https://flashlearn.princeneres.dev').replace(
-  /\/$/,
-  '',
-);
 
 function openBrowser(url: string): void {
   const cmd =
@@ -64,11 +60,11 @@ export async function runLogin(): Promise<void> {
             res.writeHead(403).end(JSON.stringify({ error: 'state mismatch' }));
             return;
           }
-          if (!data.access_token) {
-            res.writeHead(400).end(JSON.stringify({ error: 'missing access_token' }));
+          if (typeof data.token !== 'string' || !data.token.startsWith('flmcp_')) {
+            res.writeHead(400).end(JSON.stringify({ error: 'missing token' }));
             return;
           }
-          saveSession({ access_token: data.access_token, refresh_token: data.refresh_token ?? '' });
+          saveToken(data.token);
           res
             .writeHead(200, { 'Content-Type': 'application/json' })
             .end(JSON.stringify({ ok: true }));

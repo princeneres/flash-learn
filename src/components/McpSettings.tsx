@@ -4,10 +4,9 @@ import { Plug, Copy, Check, Terminal } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 
-// Pre-fills the client config with this deployment's Supabase credentials so the
-// snippet is copy-paste ready. These are the same public values the web app uses.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://xxxx.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'your-anon-key';
+// Points the MCP server at this deployment, so the snippet is copy-paste ready.
+// No credentials here: the `login` command issues a personal token.
+const APP_URL = window.location.origin;
 
 const CONFIG_SNIPPET = JSON.stringify(
   {
@@ -16,8 +15,7 @@ const CONFIG_SNIPPET = JSON.stringify(
         command: 'npx',
         args: ['-y', 'flash-learn-mcp'],
         env: {
-          SUPABASE_URL,
-          SUPABASE_ANON_KEY,
+          FLASH_LEARN_APP_URL: APP_URL,
         },
       },
     },

@@ -9,7 +9,7 @@ import { runLogin } from './login.js';
 async function startServer(): Promise<void> {
   const server = new McpServer({
     name: 'flash-learn-mcp',
-    version: '0.1.0',
+    version: '0.2.0',
   });
 
   registerDeckTools(server);

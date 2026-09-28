@@ -1,8 +1,8 @@
 {
   "name": "flash-learn-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "MCP server to create Flash-Learn decks, collections and quizzes as the authenticated user (RLS + plan quotas enforced by the database).",
+  "description": "MCP server to create Flash-Learn decks, collections and quizzes as the authenticated user (ownership + plan quotas enforced by the backend).",
   "license": "MIT",
   "author": "Prince Neres",
   "homepage": "https://flashlearn.princeneres.dev",
@@ -16,7 +16,7 @@
     "model-context-protocol",
     "flashcards",
     "flash-learn",
-    "supabase"
+    "neon"
   ],
   "bin": {
     "flash-learn-mcp": "dist/index.js"
@@ -40,13 +40,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@supabase/supabase-js": "^2.45.0",
-    "ws": "^8.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
-    "@types/node": "^20.14.0",
-    "@types/ws": "^8.5.10"
+    "@types/node": "^20.14.0"
   }
 }
