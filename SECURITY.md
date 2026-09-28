@@ -20,9 +20,9 @@ reasonable time to fix the issue before disclosing it publicly.
 
 Especially relevant areas:
 
-- Row Level Security policies, triggers and RPCs in `supabase/migrations/`
-- Edge functions in `supabase/functions/`, including the billing webhook signature check
+- Row Level Security policies, triggers and RPCs in `db/migrations/`
+- Server functions in `api/`, including storage authorization and the billing webhook signature check
 - Rendering of user-authored card HTML (`src/components/RichContent.tsx`, `src/lib/sanitize.ts`)
 - The MCP server login flow (`mcp-server/src/login.ts`, `src/pages/ConnectMcp.tsx`)
 
-Do not test against other users' data on the live app. Use your own account or a local Supabase stack.
+Do not test against other users' data on the live app. Use your own account or your own Neon project.

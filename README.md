@@ -13,7 +13,7 @@ Web app, installable as a PWA, in English and Brazilian Portuguese.
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-[![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20Auth-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Neon](https://img.shields.io/badge/Neon-Postgres%20%2B%20Auth-00E599?logo=postgresql&logoColor=white)](https://neon.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 [Live app](https://flashlearn.princeneres.dev) ·
@@ -94,25 +94,24 @@ Web app, installable as a PWA, in English and Brazilian Portuguese.
 
 ## Tech stack
 
-| Layer    | Tools                                                             |
-| -------- | ----------------------------------------------------------------- |
-| Frontend | React 19, Vite 7, TypeScript 5, React Router 7                    |
-| UI       | Tailwind CSS, Radix UI primitives, lucide-react, Recharts         |
-| Editor   | TipTap 3, KaTeX, DOMPurify                                        |
-| Backend  | Supabase: Auth, Postgres with RLS, Storage, Edge Functions (Deno) |
-| i18n     | i18next, react-i18next                                            |
-| PWA      | vite-plugin-pwa, Workbox                                          |
-| Hosting  | Vercel (static SPA)                                               |
+| Layer    | Tools                                                                          |
+| -------- | ------------------------------------------------------------------------------ |
+| Frontend | React 19, Vite 7, TypeScript 5, React Router 7                                 |
+| UI       | Tailwind CSS, Radix UI primitives, lucide-react, Recharts                      |
+| Editor   | TipTap 3, KaTeX, DOMPurify                                                     |
+| Backend  | Neon: Postgres with RLS, Neon Auth, Data API, object storage; Vercel Functions |
+| i18n     | i18next, react-i18next                                                         |
+| PWA      | vite-plugin-pwa, Workbox                                                       |
+| Hosting  | Vercel (SPA + `api/` functions)                                                |
 
 ## Getting started
 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org) 20+ and [pnpm](https://pnpm.io) 10+
-- A [Supabase](https://supabase.com) project (the free tier is enough)
-- The [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), to apply migrations and
-  deploy edge functions
-- Optional: [Docker](https://www.docker.com), to run the whole backend locally with `supabase start`
+- A [Neon](https://neon.com) project (the free plan is enough) with **Neon Auth**, the **Data API** and
+  **Object storage** enabled
+- `psql`, to apply the migrations
 
 ### 1. Install
 
@@ -122,52 +121,47 @@ cd flash-learn
 pnpm install
 ```
 
-### 2. Create the database
+### 2. Configure
 
-Link the CLI to your project and apply every migration in `supabase/migrations/`:
+Copy `.env.example` to `.env.local` and fill it in from the Neon Console (**Connect** dialog of your branch):
+
+| Variable                                                  | Where                                |
+| --------------------------------------------------------- | ------------------------------------ |
+| `VITE_NEON_AUTH_URL`, `NEON_AUTH_JWKS_URL`                | Settings → Auth                      |
+| `VITE_NEON_DATA_API_URL`                                  | Data API                             |
+| `DATABASE_URL`                                            | Connect → Postgres database          |
+| `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Object storage → Connect → S3 client |
+
+In the Neon Console:
+
+1. **Object storage:** create a private `media` bucket and a public `avatars` bucket.
+2. **Settings → Auth:** add your production domain to the trusted domains and allow localhost for development.
+3. **Settings → Auth → OAuth providers:** Google works with Neon's shared keys; add GitHub with your own OAuth app.
+
+### 3. Create the database
 
 ```bash
-supabase link --project-ref <your-project-ref>
-supabase db push
+pnpm db:migrate   # applies db/migrations/*.sql to DATABASE_URL
+pnpm db:types     # regenerates src/types/database.ts
 ```
 
-Or run everything locally instead: `supabase start` applies the migrations to a local stack and prints the local
-URL and keys.
-
-Deck and card quotas come from the `plans` table. The migrations seed a `free` plan (10 decks, 100 cards per deck,
+Deck and card quotas come from the `plans` table. The migration seeds a `free` plan (10 decks, 100 cards per deck,
 1,000 cards in total) and a `pro` plan; tune the limits there.
-
-### 3. Configure the app
-
-Copy `.env.example` to `.env` and fill in the project URL and anon key from **Project Settings → API**:
-
-```env
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
-```
-
-In the Supabase dashboard:
-
-1. **Storage:** nothing to do. The migrations create the private `media` bucket and scope it to each user's
-   folder.
-2. **Authentication → URL Configuration:** set the Site URL to `http://localhost:5173` and add
-   `http://localhost:5173/**` to the redirect URLs (plus your production URL when you deploy).
-3. **Authentication → Providers:** enable Google and GitHub if you want social sign-in.
 
 ### 4. Run
 
 ```bash
-pnpm dev          # http://localhost:5173
+pnpm dev          # http://localhost:5173 (also serves api/ functions)
 pnpm build        # type-check and production build
 pnpm preview      # serve the production build
 pnpm lint         # ESLint
 pnpm format       # Prettier
 ```
 
-### Optional: edge functions
+### Server functions
 
-The core app needs only the database. The edge functions in `supabase/functions/` power optional features and read
-their configuration from Supabase secrets (`supabase secrets set KEY=value`):
+`api/` holds Vercel Functions: `storage` (presigned URLs for media and avatars) is required; the others power optional
+features. They read their configuration from environment variables (`.env.local` locally, `pnpm env:add` on Vercel):
 
 | Function                                                | Feature                                                         | Secrets                                                                                                     |
 | ------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -175,7 +169,7 @@ their configuration from Supabase secrets (`supabase secrets set KEY=value`):
 | `ai-generate`                                           | AI deck generation with per-use credits (UI currently disabled) | `OPENAI_API_KEY`, `OPENAI_MODEL`                                                                            |
 | `buy-credits`, `create-subscription`, `abacate-webhook` | Billing through AbacatePay (UI currently disabled)              | `ABACATEPAY_API_KEY`, `ABACATEPAY_WEBHOOK_SECRET`, `ABACATEPAY_SIGNING_KEY`, `ABACATE_PRODUCT_*`, `APP_URL` |
 
-Deploy them with `supabase functions deploy`.
+They deploy with the app (`pnpm deploy`).
 
 ## Security model
 
@@ -185,9 +179,9 @@ Deploy them with `supabase functions deploy`.
   direct writes to those profile fields are blocked by a trigger. Plan quotas are enforced by triggers, so they
   also apply to the MCP server and any other API client.
 - **Private media.** Card images and audio live in a private `media` bucket, scoped to `<user-id>/…` paths and
-  served through signed URLs.
+  served through presigned URLs issued by `api/storage`.
 - **Sanitized content.** Card HTML is sanitized with DOMPurify before rendering.
-- Service-role keys and third-party API keys are used only inside edge functions, never in the browser.
+- The database owner credential and third-party API keys are used only inside `api/` functions, never in the browser.
 
 ## Project structure
 
@@ -200,10 +194,9 @@ src/
                     media storage, import/export, SRS scheduler in srsAlgorithm.ts)
   hooks/            Auth flows, plan limits, PWA install prompt, sounds
   i18n/locales/     en.json and pt.json
-  types/database.ts Types generated from the Supabase schema (pnpm db:types)
-supabase/
-  migrations/       Schema, RLS policies, triggers and RPCs
-  functions/        Edge functions (suggestions, AI generation, billing)
+  types/database.ts Types generated from the database schema (pnpm db:types)
+api/                Vercel Functions (storage, suggestions, AI generation, billing)
+db/migrations/      Schema, RLS policies, triggers and RPCs
 mcp-server/         MCP server for creating content from AI assistants
 docs/               Design notes and screenshots
 ```
@@ -231,4 +224,4 @@ described in [SECURITY.md](SECURITY.md).
 
 - [Anki](https://apps.ankiweb.net), for the scheduling ideas Flash Learn builds on
 - [TipTap](https://tiptap.dev), [Radix UI](https://www.radix-ui.com) and [shadcn/ui](https://ui.shadcn.com)
-- [Supabase](https://supabase.com), for auth, Postgres and storage
+- [Neon](https://neon.com), for Postgres, auth and storage

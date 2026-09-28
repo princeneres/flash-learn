@@ -11,20 +11,20 @@ Thanks for taking the time to contribute. Bug reports, ideas, translations and p
 
 ## Development setup
 
-Follow [Getting started](README.md#getting-started). The quickest fully local setup is:
+Follow [Getting started](README.md#getting-started). With a Neon project configured in `.env.local`, create a
+[branch](https://neon.com/docs/introduction/branching) for your work so you never touch production data:
 
 ```bash
 pnpm install
-supabase start          # local Postgres, Auth and Storage with all migrations applied
-# put the printed API URL and anon key in .env.local
-pnpm dev
+pnpm db:migrate         # applies db/migrations/ to DATABASE_URL
+pnpm dev                # app + api/ functions on http://localhost:5173
 ```
 
 ## Guidelines
 
 - **TypeScript and React function components**, formatted with Prettier (`pnpm format`) and linted with ESLint
   (`pnpm lint`).
-- **Database changes go in a new migration** under `supabase/migrations/`. Never edit a migration that has
+- **Database changes go in a new migration** under `db/migrations/` (applied with `pnpm db:migrate`). Never edit a migration that has
   already been applied. Regenerate `src/types/database.ts` with `pnpm db:types` when the schema changes.
 - **Security lives in the database.** New tables need Row Level Security policies. Anything that awards points
   or enforces limits belongs in a trigger or a `SECURITY DEFINER` function, not in client code.
